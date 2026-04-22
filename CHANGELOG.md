@@ -2,6 +2,21 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.11.5 — 2026-04-19
+
+### Tests — final coverage push (#6)
+
+| Package | Before | After |
+|---------|--------|-------|
+| pkg/license | 72.7% | **100.0%** |
+| internal/root | 19.2% | **95.2%** |
+| **Total** | 75.6% | **96.2%** |
+
+- 116 new tests (4 license + 112 CLI handler)
+- Minor refactor: `osExit` package-level var for testable `Execute()` error branch
+- Cobra test harness with fresh `NewRootCmd` per test; httptest Proxmox injected via env vars; `$HOME` isolated via `t.Setenv`
+- All substantial packages now ≥95%; `cmd/proxctl` (main.go) and `pkg/state` (scaffold stub) remain at 0% — not fixable without real work
+
 ## v2026.04.11.4 — 2026-04-19
 
 ### Tests — coverage hardening to ≥95% (#4)
