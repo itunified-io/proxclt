@@ -1,17 +1,17 @@
 package config
 
-// Cluster is the cluster.yaml manifest (§6.2) — multi-VM grouping + shared disks.
+// Cluster describes optional cluster-level semantics (RAC, PG HA, etc.).
 type Cluster struct {
-	APIVersion string       `yaml:"apiVersion" json:"apiVersion"`
-	Kind       string       `yaml:"kind" json:"kind"` // "Cluster"
-	Name       string       `yaml:"name" json:"name"`
-	Members    []string     `yaml:"members" json:"members"` // VM names
-	SharedDisks []SharedDisk `yaml:"shared_disks,omitempty" json:"shared_disks,omitempty"`
+	Kind               string      `yaml:"kind"                           json:"kind"                           validate:"required,eq=Cluster"`
+	Type               string      `yaml:"type,omitempty"                 json:"type,omitempty"                 validate:"omitempty,oneof=oracle-rac oracle-single pg-single pg-ha plain"`
+	ScanName           string      `yaml:"scan_name,omitempty"            json:"scan_name,omitempty"`
+	ScanIPs            []string    `yaml:"scan_ips,omitempty"             json:"scan_ips,omitempty"             validate:"omitempty,dive,ip"`
+	InterconnectSubnet string      `yaml:"interconnect_subnet,omitempty"  json:"interconnect_subnet,omitempty"  validate:"omitempty,cidr"`
+	HostsEntries       []HostEntry `yaml:"hosts_entries,omitempty"        json:"hosts_entries,omitempty"        validate:"dive"`
 }
 
-// SharedDisk describes a disk attached to multiple VMs (e.g. Oracle ASM).
-type SharedDisk struct {
-	Name    string `yaml:"name" json:"name"`
-	Size    string `yaml:"size" json:"size"`
-	Storage string `yaml:"storage" json:"storage"`
+// HostEntry is a /etc/hosts-style mapping.
+type HostEntry struct {
+	IP    string   `yaml:"ip"    json:"ip"    validate:"required,ip"`
+	Names []string `yaml:"names" json:"names" validate:"required,min=1"`
 }
