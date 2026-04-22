@@ -1,0 +1,21 @@
+# Example env: oracle-rac-2node
+# 2-node Oracle RAC on shared NFS, extends the shipped `oracle-rac-2node` profile.
+# Validate: proxctl config validate docs/examples/oracle-rac-2node/lab.yaml
+version: "1"
+kind: Env
+metadata:
+  name: rac-prod-example
+  domain: example.com
+  proxmox_context: prod-pve
+  dbx_context: prod-dbx
+  tags:
+    owner: dba-team
+    env: production
+  description: Example 2-node Oracle RAC deployment on shared NFS.
+extends: oracle-rac-2node
+spec:
+  hypervisor:     { $ref: ./hypervisor.yaml }
+  linux:          { $ref: ./linux.yaml }
+  networks:       { $ref: ./networks.yaml }
+  storage_classes: { $ref: ./storage-classes.yaml }
+  cluster:        { $ref: ./cluster.yaml }

@@ -1,0 +1,7 @@
+kind: StorageClasses
+local-lvm:
+  backend: lvm-thin
+  shared: false
+shared-nfs:
+  backend: nfs
+  shared: true

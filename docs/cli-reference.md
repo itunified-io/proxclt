@@ -1,7 +1,96 @@
 # CLI reference
 
-> **Note:** this file is auto-generated from Cobra via `make docs` in Phase 2+.
+Auto-generated from the Cobra command tree via `make docs-cli`. Run it to
+refresh `docs/cli-reference/` after changing any command or flag:
 
-_Phase 1 scaffold — full content lands in Phase 7 of the proxctl + linuxctl plan._
+```bash
+make docs-cli
+git add docs/cli-reference && git commit -m "docs: regenerate CLI reference"
+```
 
-See [design doc 024](https://github.com/itunified-io/infrastructure/blob/main/docs/plans/024-proxctl-design.md) (private repo).
+The generator lives at [`cmd/docgen/main.go`](../cmd/docgen/main.go). Each
+leaf command gets its own Markdown page under
+[`docs/cli-reference/`](cli-reference/), cross-linked with parent + sibling
+commands. The root command lives at
+[`cli-reference/proxctl.md`](cli-reference/proxctl.md).
+
+## Command tree
+
+### Top-level
+
+- [`proxctl`](cli-reference/proxctl.md)
+- [`proxctl version`](cli-reference/proxctl_version.md)
+
+### `proxctl config`
+
+- [`proxctl config`](cli-reference/proxctl_config.md)
+- [`proxctl config validate`](cli-reference/proxctl_config_validate.md)
+- [`proxctl config render`](cli-reference/proxctl_config_render.md)
+- [`proxctl config schema`](cli-reference/proxctl_config_schema.md)
+- [`proxctl config use-context`](cli-reference/proxctl_config_use-context.md)
+- [`proxctl config current-context`](cli-reference/proxctl_config_current-context.md)
+- [`proxctl config get-contexts`](cli-reference/proxctl_config_get-contexts.md)
+
+### `proxctl env`
+
+- [`proxctl env`](cli-reference/proxctl_env.md)
+- [`proxctl env new`](cli-reference/proxctl_env_new.md)
+- [`proxctl env list`](cli-reference/proxctl_env_list.md)
+- [`proxctl env use`](cli-reference/proxctl_env_use.md)
+- [`proxctl env current`](cli-reference/proxctl_env_current.md)
+- [`proxctl env add`](cli-reference/proxctl_env_add.md)
+- [`proxctl env remove`](cli-reference/proxctl_env_remove.md)
+- [`proxctl env show`](cli-reference/proxctl_env_show.md)
+
+### `proxctl vm`
+
+- [`proxctl vm`](cli-reference/proxctl_vm.md)
+- [`proxctl vm create`](cli-reference/proxctl_vm_create.md)
+- [`proxctl vm start`](cli-reference/proxctl_vm_start.md)
+- [`proxctl vm stop`](cli-reference/proxctl_vm_stop.md)
+- [`proxctl vm reboot`](cli-reference/proxctl_vm_reboot.md)
+- [`proxctl vm delete`](cli-reference/proxctl_vm_delete.md)
+- [`proxctl vm list`](cli-reference/proxctl_vm_list.md)
+- [`proxctl vm status`](cli-reference/proxctl_vm_status.md)
+
+### `proxctl snapshot`
+
+- [`proxctl snapshot`](cli-reference/proxctl_snapshot.md)
+- [`proxctl snapshot create`](cli-reference/proxctl_snapshot_create.md)
+- [`proxctl snapshot restore`](cli-reference/proxctl_snapshot_restore.md)
+- [`proxctl snapshot list`](cli-reference/proxctl_snapshot_list.md)
+- [`proxctl snapshot delete`](cli-reference/proxctl_snapshot_delete.md)
+
+### `proxctl kickstart`
+
+- [`proxctl kickstart`](cli-reference/proxctl_kickstart.md)
+- [`proxctl kickstart generate`](cli-reference/proxctl_kickstart_generate.md)
+- [`proxctl kickstart build-iso`](cli-reference/proxctl_kickstart_build-iso.md)
+- [`proxctl kickstart upload`](cli-reference/proxctl_kickstart_upload.md)
+- [`proxctl kickstart distros`](cli-reference/proxctl_kickstart_distros.md)
+
+### `proxctl boot`
+
+- [`proxctl boot`](cli-reference/proxctl_boot.md)
+- [`proxctl boot configure-first-boot`](cli-reference/proxctl_boot_configure-first-boot.md)
+- [`proxctl boot eject-iso`](cli-reference/proxctl_boot_eject-iso.md)
+
+### `proxctl workflow`
+
+- [`proxctl workflow`](cli-reference/proxctl_workflow.md)
+- [`proxctl workflow plan`](cli-reference/proxctl_workflow_plan.md)
+- [`proxctl workflow up`](cli-reference/proxctl_workflow_up.md)
+- [`proxctl workflow down`](cli-reference/proxctl_workflow_down.md)
+- [`proxctl workflow status`](cli-reference/proxctl_workflow_status.md)
+- [`proxctl workflow verify`](cli-reference/proxctl_workflow_verify.md)
+- [`proxctl workflow profile`](cli-reference/proxctl_workflow_profile.md)
+- [`proxctl workflow profile list`](cli-reference/proxctl_workflow_profile_list.md)
+- [`proxctl workflow profile show`](cli-reference/proxctl_workflow_profile_show.md)
+
+### `proxctl license`
+
+- [`proxctl license`](cli-reference/proxctl_license.md)
+- [`proxctl license status`](cli-reference/proxctl_license_status.md)
+- [`proxctl license activate`](cli-reference/proxctl_license_activate.md)
+- [`proxctl license show`](cli-reference/proxctl_license_show.md)
+- [`proxctl license seats-used`](cli-reference/proxctl_license_seats-used.md)

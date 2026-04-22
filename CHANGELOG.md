@@ -2,6 +2,25 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.11.7 — 2026-04-22
+
+### Added — comprehensive documentation suite (#10)
+
+- Full rewrite of every `docs/*.md` stub:
+  - `installation.md`: Homebrew, binary, Docker, source, air-gap, shell completion, license setup, config dir, first-run verification.
+  - `quick-start.md`: 8-step 5-minute walkthrough.
+  - `user-guide.md`: concepts, contexts, env registry, profiles, split-file layout, VM lifecycle, kickstart, workflow orchestration, single vs multi-node, rollback, audit log.
+  - `config-reference.md`: every YAML key across lab, hypervisor, networks, storage-classes, cluster, linux layers; Ref[T] model; secret resolver with pipe filters; profile inheritance; validation rules.
+  - `profile-guide.md`: shipped profiles, overrides, writing custom profiles, inheritance rules.
+  - `distro-guide.md`: supported distros, DistroProfile interface, adding a new distro, bootloader requirements, package sets.
+  - `licensing.md`: 3-tier model, feature matrix, obtaining a license, grace period, offline activation, seat counting, pricing.
+  - `troubleshooting.md`: 20 symptom → cause → fix entries.
+  - `architecture.md`: component diagram, data flow, package layout, state model, concurrency, plugin points.
+  - `contributing.md`: dev setup, tests, coverage, PR flow, release process, coding conventions.
+- **CLI reference generator** (`cmd/docgen/main.go`) — renders the Cobra tree into `docs/cli-reference/` via `cobra/doc.GenMarkdownTree`. Makefile target `docs-cli` (alias `docs`). 52 auto-generated Markdown pages committed so GitHub renders them directly.
+- **Three validated example envs** under `docs/examples/`: `host-only/`, `pg-single/`, `oracle-rac-2node/` — each a full split-file manifest that passes `proxctl config validate`.
+- **README.md** rewritten: 30-second demo, key-features list, tier table, status, documentation map.
+
 ## v2026.04.11.6 — 2026-04-19
 
 ### Added — Phase 5: multi-node workflow + profile library (#8)

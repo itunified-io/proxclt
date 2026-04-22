@@ -1,0 +1,7 @@
+kind: Linux
+# Passthrough for linuxctl. proxctl reads this only to cross-check disk
+# tag references (none used in this minimal env).
+timezone: Europe/Berlin
+packages:
+  - htop
+  - tmux

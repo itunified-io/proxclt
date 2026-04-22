@@ -1,0 +1,23 @@
+# Example env: host-only
+# Single Linux VM, no cluster, extends the shipped `host-only` profile.
+# Validate: proxctl config validate docs/examples/host-only/lab.yaml
+version: "1"
+kind: Env
+metadata:
+  name: jumpbox-example
+  domain: example.com
+  proxmox_context: lab-pve
+  tags:
+    owner: ops-team
+    env: lab
+  description: Example host-only Linux VM for smoke tests.
+extends: host-only
+spec:
+  hypervisor:     { $ref: ./hypervisor.yaml }
+  linux:          { $ref: ./linux.yaml }
+  networks:       { $ref: ./networks.yaml }
+  storage_classes: { $ref: ./storage-classes.yaml }
+  # Override profile cluster (which sets type: host-only, not a recognised type).
+  cluster:
+    kind: Cluster
+    type: plain

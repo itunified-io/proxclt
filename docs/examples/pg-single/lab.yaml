@@ -1,0 +1,20 @@
+# Example env: pg-single
+# Single-node PostgreSQL, extends the shipped `pg-single` profile.
+# Validate: proxctl config validate docs/examples/pg-single/lab.yaml
+version: "1"
+kind: Env
+metadata:
+  name: pg-stg-example
+  domain: example.com
+  proxmox_context: lab-pve
+  dbx_context: lab-dbx
+  tags:
+    owner: dba-team
+    env: staging
+  description: Example single-node PostgreSQL env.
+extends: pg-single
+spec:
+  hypervisor:     { $ref: ./hypervisor.yaml }
+  linux:          { $ref: ./linux.yaml }
+  networks:       { $ref: ./networks.yaml }
+  storage_classes: { $ref: ./storage-classes.yaml }

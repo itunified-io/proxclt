@@ -9,7 +9,7 @@ LDFLAGS := -s -w \
 	-X $(PKG)/pkg/version.Commit=$(COMMIT) \
 	-X $(PKG)/pkg/version.Date=$(DATE)
 
-.PHONY: build test lint vet staticcheck docs clean
+.PHONY: build test lint vet staticcheck docs docs-cli clean
 
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags="$(LDFLAGS)" -o bin/$(BINARY) ./cmd/proxctl
@@ -26,9 +26,13 @@ staticcheck:
 
 lint: vet staticcheck
 
-docs:
-	@mkdir -p docs/cli
-	@echo "cli-reference generation: implemented in Phase 2 via cobra/doc.GenMarkdownTree"
+docs: docs-cli
+
+docs-cli:
+	@mkdir -p docs/cli-reference
+	@rm -f docs/cli-reference/proxctl*.md
+	go run ./cmd/docgen docs/cli-reference
+	@echo "→ docs/cli-reference/ (cobra/doc.GenMarkdownTree)"
 
 clean:
 	rm -rf bin/ dist/

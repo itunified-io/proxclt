@@ -1,0 +1,50 @@
+kind: Hypervisor
+defaults:
+  resources:
+    memory: 4096
+    cores: 2
+    sockets: 1
+  tags: [proxctl, host-only]
+nodes:
+  host-1:
+    proxmox:
+      node_name: pve-lab-1
+      vm_id: 2001
+    ips:
+      public: 10.10.0.50
+    nics:
+      - name: net0
+        usage: public
+        bridge: vmbr0
+        network: public
+        ipv4:
+          address: 10.10.0.50/24
+          gateway: 10.10.0.1
+          dns: [10.10.0.1]
+    disks:
+      - id: 0
+        size: 32G
+        storage_class: local-lvm
+        interface: scsi0
+        role: root
+iso:
+  storage: local
+  image: ubuntu-22.04.4-live-server-amd64.iso
+  guest_os_type: l26
+kickstart:
+  distro: ubuntu2204
+  timezone: Europe/Berlin
+  keyboard_layout: de
+  lang: en_US.UTF-8
+  mode: text
+  chrony_servers: [0.pool.ntp.org, 1.pool.ntp.org]
+  sudo:
+    wheel_nopasswd: true
+  packages:
+    base: [chrony, openssh-server, qemu-guest-agent]
+  firewall:
+    enabled: false
+  update_system: true
+  ssh_keys:
+    root:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXAMPLE ops@example.com"

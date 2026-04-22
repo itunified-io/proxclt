@@ -1,0 +1,112 @@
+kind: Hypervisor
+defaults:
+  resources:
+    memory: 16384
+    cores: 8
+    sockets: 1
+    bios: ovmf
+    machine: q35
+  tags: [proxctl, rac, prod]
+nodes:
+  rac-node-1:
+    proxmox:
+      node_name: pve-prod-1
+      vm_id: 1001
+    ips:
+      public: 10.10.0.101
+      private: 10.10.1.101
+      vip: 10.10.0.201
+    nics:
+      - name: net0
+        usage: public
+        bridge: vmbr0
+        network: public
+        ipv4:
+          address: 10.10.0.101/24
+          gateway: 10.10.0.1
+          dns: [10.10.0.1]
+      - name: net1
+        usage: private
+        bridge: vmbr1
+        network: private
+        ipv4:
+          address: 10.10.1.101/24
+    disks:
+      - id: 0
+        size: 64G
+        storage_class: local-lvm
+        interface: scsi0
+        role: root
+      - id: 1
+        size: 500G
+        storage_class: shared-nfs
+        interface: scsi1
+        shared: true
+        role: asm-data
+        tag: asm-data-1
+  rac-node-2:
+    proxmox:
+      node_name: pve-prod-2
+      vm_id: 1002
+    ips:
+      public: 10.10.0.102
+      private: 10.10.1.102
+      vip: 10.10.0.202
+    nics:
+      - name: net0
+        usage: public
+        bridge: vmbr0
+        network: public
+        ipv4:
+          address: 10.10.0.102/24
+          gateway: 10.10.0.1
+          dns: [10.10.0.1]
+      - name: net1
+        usage: private
+        bridge: vmbr1
+        network: private
+        ipv4:
+          address: 10.10.1.102/24
+    disks:
+      - id: 0
+        size: 64G
+        storage_class: local-lvm
+        interface: scsi0
+        role: root
+      - id: 1
+        size: 500G
+        storage_class: shared-nfs
+        interface: scsi1
+        shared: true
+        role: asm-data
+        tag: asm-data-1
+iso:
+  storage: local
+  image: OracleLinux-R9-U3-x86_64-dvd.iso
+  guest_os_type: l26
+  kickstart_storage: local
+kickstart:
+  distro: oraclelinux9
+  timezone: Europe/Berlin
+  keyboard_layout: de
+  lang: en_US.UTF-8
+  mode: text
+  chrony_servers: [0.pool.ntp.org, 1.pool.ntp.org]
+  sudo:
+    wheel_nopasswd: true
+  packages:
+    base: [chrony, qemu-guest-agent]
+    post: [oracle-database-preinstall-23ai]
+  firewall:
+    enabled: false
+  update_system: true
+  ssh_keys:
+    root:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXAMPLE ops@example.com"
+  additional_users:
+    - name: oracle
+      wheel: false
+      ssh_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXAMPLE oracle@example.com"
+    - name: grid
+      wheel: false
+      ssh_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXAMPLE grid@example.com"

@@ -1,0 +1,17 @@
+kind: Cluster
+type: oracle-rac
+scan_name: rac-scan.example.com
+scan_ips:
+  - 10.10.0.110
+  - 10.10.0.111
+  - 10.10.0.112
+interconnect_subnet: 10.10.1.0/24
+hosts_entries:
+  - ip: 10.10.0.101
+    names: [rac-node-1, rac-node-1.example.com]
+  - ip: 10.10.0.102
+    names: [rac-node-2, rac-node-2.example.com]
+  - ip: 10.10.0.201
+    names: [rac-node-1-vip, rac-node-1-vip.example.com]
+  - ip: 10.10.0.202
+    names: [rac-node-2-vip, rac-node-2-vip.example.com]

@@ -1,0 +1,10 @@
+kind: Linux
+# Passthrough for linuxctl. Disk tag `pg-data` cross-references
+# hypervisor.yaml:nodes.pg-1.disks[1].tag.
+partitions:
+  - disk_tag: pg-data
+    filesystem: xfs
+    mountpoint: /var/lib/pgsql
+packages:
+  - postgresql
+  - postgresql-contrib

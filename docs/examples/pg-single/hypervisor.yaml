@@ -1,0 +1,60 @@
+kind: Hypervisor
+defaults:
+  resources:
+    memory: 8192
+    cores: 4
+    sockets: 1
+  tags: [proxctl, postgres]
+nodes:
+  pg-1:
+    proxmox:
+      node_name: pve-lab-1
+      vm_id: 2101
+    ips:
+      public: 10.10.0.60
+    nics:
+      - name: net0
+        usage: public
+        bridge: vmbr0
+        network: public
+        ipv4:
+          address: 10.10.0.60/24
+          gateway: 10.10.0.1
+          dns: [10.10.0.1]
+    disks:
+      - id: 0
+        size: 64G
+        storage_class: local-lvm
+        interface: scsi0
+        role: root
+      - id: 1
+        size: 200G
+        storage_class: local-lvm
+        interface: scsi1
+        role: pg-data
+        tag: pg-data
+iso:
+  storage: local
+  image: OracleLinux-R9-U3-x86_64-dvd.iso
+  guest_os_type: l26
+kickstart:
+  distro: oraclelinux9
+  timezone: Europe/Berlin
+  lang: en_US.UTF-8
+  mode: text
+  chrony_servers: [0.pool.ntp.org, 1.pool.ntp.org]
+  sudo:
+    wheel_nopasswd: true
+  packages:
+    base: [chrony, qemu-guest-agent]
+    post: [postgresql-server]
+  firewall:
+    enabled: false
+  update_system: true
+  ssh_keys:
+    root:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXAMPLE ops@example.com"
+  additional_users:
+    - name: postgres
+      wheel: false
+      ssh_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXAMPLE postgres@example.com"
