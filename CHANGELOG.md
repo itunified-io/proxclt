@@ -2,6 +2,27 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.11.6 — 2026-04-19
+
+### Added — Phase 5: multi-node workflow + profile library (#8)
+
+- **MultiNodeWorkflow** (`pkg/workflow/multi_node.go`): concurrent per-node orchestration with `golang.org/x/sync/errgroup`, fail-fast (default) + `ContinueOnError` mode, ISO upload serialization via shared `sync.Mutex` (prevents parallel upload to same storage)
+- **Profile library** (`pkg/config/profiles/*.yaml`, go:embed): `oracle-rac-2node`, `pg-single`, `host-only` — extend via `extends: <name>` in lab env.yaml
+- **CLI**: `workflow up/down/plan/status/verify` auto-dispatch to MultiNode when `len(Nodes) > 1`; new `workflow profile list|show <name>`
+- `SingleVMWorkflow` gained optional `UploadMu *sync.Mutex` for cross-node upload coordination (minimal API addition, backward compatible)
+
+### Concurrency verified
+
+- `TestMultiNode_Apply_ISOUploadSerialized`: atomic counter asserts ≤1 in-flight upload at a time
+- `TestMultiNode_Apply_ContinueOnError`: both node failures propagate + aggregated
+- `go test -race ./...`: clean
+
+### Coverage held
+
+- pkg/workflow: 98% → 96.4% (new MultiNode adds ~170 statements; still >95%)
+- pkg/config: 95.1% held
+- internal/root: 95.2% → 95.0% held
+
 ## v2026.04.11.5 — 2026-04-19
 
 ### Tests — final coverage push (#6)
