@@ -1,7 +1,7 @@
 package config
 
 // Hypervisor describes the Proxmox-side topology (nodes, VMIDs, disks, NICs,
-// ISO/kickstart bits). Owned by proxclt.
+// ISO/kickstart bits). Owned by proxctl.
 type Hypervisor struct {
 	Kind      string           `yaml:"kind"                 json:"kind"                 validate:"required,eq=Hypervisor"`
 	Nodes     map[string]Node  `yaml:"nodes"                json:"nodes"                validate:"required,min=1,dive"`
@@ -79,7 +79,7 @@ type ISOConfig struct {
 	BootloaderDir    string `yaml:"bootloader_dir,omitempty"   json:"bootloader_dir,omitempty"`
 }
 
-// KickstartConfig is the per-env kickstart/preseed inputs proxclt renders into a bootstrap file.
+// KickstartConfig is the per-env kickstart/preseed inputs proxctl renders into a bootstrap file.
 type KickstartConfig struct {
 	Distro          string              `yaml:"distro"                     json:"distro"                     validate:"required,oneof=oraclelinux8 oraclelinux9 ubuntu2204 rhel9 rocky9 sles15"`
 	Timezone        string              `yaml:"timezone,omitempty"         json:"timezone,omitempty"`

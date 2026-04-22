@@ -1,4 +1,4 @@
-// Package version exposes the baked-in build metadata for proxclt.
+// Package version exposes the baked-in build metadata for proxctl.
 // Values are injected via -ldflags at build time (see .goreleaser.yaml).
 package version
 

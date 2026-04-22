@@ -5,7 +5,7 @@ import "github.com/spf13/cobra"
 func newEnvCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "env",
-		Short: "Manage env bookmarks (~/.proxclt/envs.yaml)",
+		Short: "Manage env bookmarks (~/.proxctl/envs.yaml)",
 	}
 	c.AddCommand(
 		&cobra.Command{Use: "new NAME", Short: "Scaffold a new env directory", Args: cobra.ExactArgs(1), RunE: notImplemented("env new")},

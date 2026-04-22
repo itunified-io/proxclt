@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/itunified-io/proxclt/pkg/kickstart"
+	"github.com/itunified-io/proxctl/pkg/kickstart"
 	"github.com/spf13/cobra"
 )
 

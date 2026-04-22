@@ -1,4 +1,4 @@
-# proxclt-generated preseed for {{ .FQDN }}
+# proxctl-generated preseed for {{ .FQDN }}
 # Distro: {{ .Kickstart.Distro }}
 
 d-i debian-installer/locale string {{ if .Kickstart.Lang }}{{ .Kickstart.Lang }}{{ else }}en_US.UTF-8{{ end }}

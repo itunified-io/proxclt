@@ -6,7 +6,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Database is a fully opaque manifest; proxclt does not act on it.
+// Database is a fully opaque manifest; proxctl does not act on it.
 type Database struct {
 	Kind string         `yaml:"kind" json:"kind" validate:"required,oneof=OracleDatabase PostgresDatabase"`
 	Raw  map[string]any `yaml:"-"    json:"raw,omitempty"`

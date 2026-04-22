@@ -27,6 +27,6 @@ jobs:
       - name: go test
         run: go test -race -coverprofile=coverage.out ./...
       - name: go build
-        run: CGO_ENABLED=0 go build -trimpath -o /tmp/proxclt ./cmd/proxclt
+        run: CGO_ENABLED=0 go build -trimpath -o /tmp/proxctl ./cmd/proxctl
       - name: sanity check
-        run: /tmp/proxclt version
+        run: /tmp/proxctl version

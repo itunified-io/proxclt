@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/itunified-io/proxclt/pkg/config"
+	"github.com/itunified-io/proxctl/pkg/config"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -12,7 +12,7 @@ import (
 func newConfigCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "config",
-		Short: "Manage proxclt contexts and env manifests",
+		Short: "Manage proxctl contexts and env manifests",
 	}
 
 	validateCmd := &cobra.Command{

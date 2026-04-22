@@ -1,4 +1,4 @@
-// Package state provides the SQLite-backed persistence layer for proxclt.
+// Package state provides the SQLite-backed persistence layer for proxctl.
 //
 // Phase 1 (scaffold): types + stubs. Real implementation lands in Phase 2
 // with modernc.org/sqlite (pure Go, no CGO) per design doc §4.5.
@@ -12,7 +12,7 @@ import (
 // ErrNotImplemented is returned by stubbed methods during scaffold phase.
 var ErrNotImplemented = errors.New("state: not implemented yet (scaffold)")
 
-// DB is the handle for the proxclt state database (~/.proxclt/state.db).
+// DB is the handle for the proxctl state database (~/.proxctl/state.db).
 type DB struct {
 	path string
 }

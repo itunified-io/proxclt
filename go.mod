@@ -1,4 +1,4 @@
-module github.com/itunified-io/proxclt
+module github.com/itunified-io/proxctl
 
 go 1.25.0
 

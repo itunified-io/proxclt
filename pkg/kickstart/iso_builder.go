@@ -59,7 +59,7 @@ func (b *ISOBuilder) Build(kickstartContent, hostname string) (string, error) {
 	if workRoot == "" {
 		workRoot = os.TempDir()
 	}
-	buildDir, err := os.MkdirTemp(workRoot, "proxclt-iso-"+hostname+"-")
+	buildDir, err := os.MkdirTemp(workRoot, "proxctl-iso-"+hostname+"-")
 	if err != nil {
 		return "", fmt.Errorf("mkdtemp: %w", err)
 	}
@@ -89,7 +89,7 @@ LABEL linux
 	}
 
 	// Build the ISO.
-	outPath := filepath.Join(workRoot, fmt.Sprintf("proxclt-%s.iso", hostname))
+	outPath := filepath.Join(workRoot, fmt.Sprintf("proxctl-%s.iso", hostname))
 	// Remove any stale output.
 	_ = os.Remove(outPath)
 

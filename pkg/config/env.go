@@ -1,4 +1,4 @@
-// Package config defines the proxclt env manifest model, YAML loader,
+// Package config defines the proxctl env manifest model, YAML loader,
 // $ref resolution, profile inheritance, secret placeholder resolution,
 // cross-field validation, and JSON Schema export.
 package config

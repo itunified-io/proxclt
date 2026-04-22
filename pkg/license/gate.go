@@ -1,10 +1,10 @@
-// Package license wraps dbx/pkg/core/license for proxclt's per-tool gate.
+// Package license wraps dbx/pkg/core/license for proxctl's per-tool gate.
 //
 // Phase 1 (scaffold): thin stub with ToolTier constants + ToolCatalog map.
 // Phase 2+ will wire Check() through to github.com/itunified-io/dbx/pkg/core/license.
 package license
 
-// ToolTier classifies each proxclt leaf command against a commercial tier.
+// ToolTier classifies each proxctl leaf command against a commercial tier.
 type ToolTier int
 
 const (
@@ -30,7 +30,7 @@ func (t ToolTier) String() string {
 	}
 }
 
-// ToolCatalog maps each proxclt leaf command to its required tier.
+// ToolCatalog maps each proxctl leaf command to its required tier.
 // Authoritative source for the license gate — see docs/licensing.md.
 var ToolCatalog = map[string]ToolTier{
 	// config group

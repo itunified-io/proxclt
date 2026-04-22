@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/itunified-io/proxclt/pkg/config"
-	"github.com/itunified-io/proxclt/pkg/kickstart"
-	"github.com/itunified-io/proxclt/pkg/proxmox"
+	"github.com/itunified-io/proxctl/pkg/config"
+	"github.com/itunified-io/proxctl/pkg/kickstart"
+	"github.com/itunified-io/proxctl/pkg/proxmox"
 )
 
 // Change is a single unit of work in the plan.
@@ -158,7 +158,7 @@ func (w *SingleVMWorkflow) Apply(ctx context.Context, changes []Change) error {
 			if isoPath == "" {
 				return errors.New("apply: iso path empty (did build-iso run?)")
 			}
-			if err := w.Client.UploadISO(ctx, r.node.Proxmox.NodeName, r.iso.KickstartStorage, isoPath, fmt.Sprintf("proxclt-%s.iso", w.NodeName)); err != nil {
+			if err := w.Client.UploadISO(ctx, r.node.Proxmox.NodeName, r.iso.KickstartStorage, isoPath, fmt.Sprintf("proxctl-%s.iso", w.NodeName)); err != nil {
 				return fmt.Errorf("upload-iso: %w", err)
 			}
 		case "create-vm":

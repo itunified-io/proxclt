@@ -6,7 +6,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Hooks is the set of lifecycle hooks that can fire during proxclt operations.
+// Hooks is the set of lifecycle hooks that can fire during proxctl operations.
 type Hooks struct {
 	OnValidateSuccess []Hook `yaml:"on_validate_success,omitempty" json:"on_validate_success,omitempty" validate:"dive"`
 	OnApplyStart      []Hook `yaml:"on_apply_start,omitempty"      json:"on_apply_start,omitempty"      validate:"dive"`
