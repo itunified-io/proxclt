@@ -1,24 +1,24 @@
 version: 2
 
-project_name: proxclt
+project_name: proxctl
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: proxclt
-    main: ./cmd/proxclt
-    binary: proxclt
+  - id: proxctl
+    main: ./cmd/proxctl
+    binary: proxctl
     env:
       - CGO_ENABLED=0
     goos: [linux, darwin]
     goarch: [amd64, arm64]
     ldflags:
       - -s -w
-      - -X github.com/itunified-io/proxclt/pkg/version.Version={{.Version}}
-      - -X github.com/itunified-io/proxclt/pkg/version.Commit={{.ShortCommit}}
-      - -X github.com/itunified-io/proxclt/pkg/version.Date={{.Date}}
+      - -X github.com/itunified-io/proxctl/pkg/version.Version={{.Version}}
+      - -X github.com/itunified-io/proxctl/pkg/version.Commit={{.ShortCommit}}
+      - -X github.com/itunified-io/proxctl/pkg/version.Date={{.Date}}
 
 archives:
   - id: default
@@ -41,25 +41,25 @@ changelog:
       - "^chore:"
 
 brews:
-  - name: proxclt
+  - name: proxctl
     repository:
       owner: itunified-io
       name: homebrew-tap
-    homepage: "https://github.com/itunified-io/proxclt"
+    homepage: "https://github.com/itunified-io/proxctl"
     description: "Proxmox VM provisioning CLI — kickstart, lifecycle, workflows"
     license: "AGPL-3.0"
     install: |
-      bin.install "proxclt"
+      bin.install "proxctl"
 
 dockers:
   - image_templates:
-      - "ghcr.io/itunified-io/proxclt:{{ .Version }}-amd64"
+      - "ghcr.io/itunified-io/proxctl:{{ .Version }}-amd64"
     use: buildx
     build_flag_templates:
       - "--platform=linux/amd64"
     extra_files: [LICENSE]
   - image_templates:
-      - "ghcr.io/itunified-io/proxclt:{{ .Version }}-arm64"
+      - "ghcr.io/itunified-io/proxctl:{{ .Version }}-arm64"
     use: buildx
     goarch: arm64
     build_flag_templates:
@@ -67,11 +67,11 @@ dockers:
     extra_files: [LICENSE]
 
 docker_manifests:
-  - name_template: "ghcr.io/itunified-io/proxclt:{{ .Version }}"
+  - name_template: "ghcr.io/itunified-io/proxctl:{{ .Version }}"
     image_templates:
-      - "ghcr.io/itunified-io/proxclt:{{ .Version }}-amd64"
-      - "ghcr.io/itunified-io/proxclt:{{ .Version }}-arm64"
-  - name_template: "ghcr.io/itunified-io/proxclt:latest"
+      - "ghcr.io/itunified-io/proxctl:{{ .Version }}-amd64"
+      - "ghcr.io/itunified-io/proxctl:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/itunified-io/proxctl:latest"
     image_templates:
-      - "ghcr.io/itunified-io/proxclt:{{ .Version }}-amd64"
-      - "ghcr.io/itunified-io/proxclt:{{ .Version }}-arm64"
+      - "ghcr.io/itunified-io/proxctl:{{ .Version }}-amd64"
+      - "ghcr.io/itunified-io/proxctl:{{ .Version }}-arm64"

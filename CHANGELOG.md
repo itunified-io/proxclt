@@ -1,6 +1,16 @@
 # Changelog
 
-All notable changes to proxclt are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
+All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
+
+## v2026.04.11.3 — 2026-04-19
+
+### Changed (BREAKING)
+- Renamed tool from `proxclt` → `proxctl` (per user request, ADR follow-up pending)
+- Go module path: `github.com/itunified-io/proxctl`
+- Binary: `proxctl`
+- Config/state dir: `~/.proxctl/`
+- Env vars: `PROXCTL_*`
+- Repo: `itunified-io/proxctl` (GitHub auto-redirects from old URL)
 
 ## v2026.04.11.2 — 2026-04-19
 
@@ -10,22 +20,22 @@ All notable changes to proxclt are documented here. Format: CalVer (`YYYY.MM.DD.
 - `pkg/proxmox` (83.8% coverage): core REST client with token auth + task polling, VM CRUD + list + status, storage list + ISO upload, snapshot CRUD + rollback, first-boot ISO attach + SetBootOrder + ConfigureFirstBoot (#1)
 - `pkg/kickstart` (69.5% coverage): Go text/template + sprig renderer, templates for OL8/OL9/Ubuntu 22.04 (base + common partials), xorriso/mkisofs ISO builder (#1)
 - `pkg/workflow` (53.7% coverage): SingleVMWorkflow with Plan → Apply → Verify → Rollback + Up/Down helpers, dry-run support (#1)
-- `internal/root/clientutil.go`: Proxmox client loader from `~/.proxclt/config.yaml` (kubectl-style contexts) with env-var fallback
+- `internal/root/clientutil.go`: Proxmox client loader from `~/.proxctl/config.yaml` (kubectl-style contexts) with env-var fallback
 - CLI handlers wired for real: `config validate|render|schema`, `vm create|start|stop|reboot|delete|list|status`, `snapshot create|restore|list|delete`, `kickstart generate|build-iso|upload|distros`, `boot configure-first-boot|eject-iso`, `workflow plan|up|down|status|verify`
 
 ### Verified
 
 - `go build ./...`, `go vet ./...`, `staticcheck ./...`, `go test ./...` all clean
-- `proxclt config validate <env.yaml>` roundtrip green
-- `proxclt kickstart distros` lists 3 supported distros
+- `proxctl config validate <env.yaml>` roundtrip green
+- `proxctl kickstart distros` lists 3 supported distros
 
 ## v2026.04.11.1 — 2026-04-22
 
 ### Added
 
-- Initial scaffold from Phase 1 of the proxclt + linuxctl plan
-  (`itunified-io/infrastructure` docs/plans/024-proxclt-design.md).
-- Go module `github.com/itunified-io/proxclt` on Go 1.23.
+- Initial scaffold from Phase 1 of the proxctl + linuxctl plan
+  (`itunified-io/infrastructure` docs/plans/024-proxctl-design.md).
+- Go module `github.com/itunified-io/proxctl` on Go 1.23.
 - Cobra command tree covering 9 subcommand groups:
   `config`, `env`, `vm`, `snapshot`, `kickstart`, `boot`, `workflow`, `license`, `version`.
   Every leaf subcommand returns `not implemented yet (scaffold)` — real logic lands in Phase 2+.

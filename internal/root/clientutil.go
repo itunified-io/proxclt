@@ -6,19 +6,19 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/itunified-io/proxclt/pkg/config"
-	"github.com/itunified-io/proxclt/pkg/proxmox"
+	"github.com/itunified-io/proxctl/pkg/config"
+	"github.com/itunified-io/proxctl/pkg/proxmox"
 	"gopkg.in/yaml.v3"
 )
 
-// proxcltConfig is the minimal on-disk config at ~/.proxclt/config.yaml.
+// proxctlConfig is the minimal on-disk config at ~/.proxctl/config.yaml.
 // (kubectl-style contexts — Phase 2 uses only a single current context.)
-type proxcltConfig struct {
+type proxctlConfig struct {
 	CurrentContext string           `yaml:"current-context"`
-	Contexts       []proxcltContext `yaml:"contexts"`
+	Contexts       []proxctlContext `yaml:"contexts"`
 }
 
-type proxcltContext struct {
+type proxctlContext struct {
 	Name        string `yaml:"name"`
 	Endpoint    string `yaml:"endpoint"`
 	TokenID     string `yaml:"token_id"`
@@ -26,20 +26,20 @@ type proxcltContext struct {
 	InsecureTLS bool   `yaml:"insecure_tls"`
 }
 
-// loadProxmoxClient loads credentials from ~/.proxclt/config.yaml (if present)
-// or from env vars PROXCLT_ENDPOINT / PROXCLT_TOKEN_ID / PROXCLT_TOKEN_SECRET.
+// loadProxmoxClient loads credentials from ~/.proxctl/config.yaml (if present)
+// or from env vars PROXCTL_ENDPOINT / PROXCTL_TOKEN_ID / PROXCTL_TOKEN_SECRET.
 func loadProxmoxClient() (*proxmox.Client, error) {
 	var (
-		endpoint    = os.Getenv("PROXCLT_ENDPOINT")
-		tokenID     = os.Getenv("PROXCLT_TOKEN_ID")
-		tokenSecret = os.Getenv("PROXCLT_TOKEN_SECRET")
-		insecure    = os.Getenv("PROXCLT_INSECURE_TLS") == "1"
+		endpoint    = os.Getenv("PROXCTL_ENDPOINT")
+		tokenID     = os.Getenv("PROXCTL_TOKEN_ID")
+		tokenSecret = os.Getenv("PROXCTL_TOKEN_SECRET")
+		insecure    = os.Getenv("PROXCTL_INSECURE_TLS") == "1"
 	)
 
 	home, _ := os.UserHomeDir()
-	cfgPath := filepath.Join(home, ".proxclt", "config.yaml")
+	cfgPath := filepath.Join(home, ".proxctl", "config.yaml")
 	if data, err := os.ReadFile(cfgPath); err == nil {
-		var cfg proxcltConfig
+		var cfg proxctlConfig
 		if err := yaml.Unmarshal(data, &cfg); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", cfgPath, err)
 		}
@@ -65,7 +65,7 @@ func loadProxmoxClient() (*proxmox.Client, error) {
 	}
 
 	if endpoint == "" || tokenID == "" || tokenSecret == "" {
-		return nil, errors.New("proxmox credentials missing: set $PROXCLT_ENDPOINT/$PROXCLT_TOKEN_ID/$PROXCLT_TOKEN_SECRET or create ~/.proxclt/config.yaml")
+		return nil, errors.New("proxmox credentials missing: set $PROXCTL_ENDPOINT/$PROXCTL_TOKEN_ID/$PROXCTL_TOKEN_SECRET or create ~/.proxctl/config.yaml")
 	}
 	return proxmox.NewClient(proxmox.ClientOpts{
 		Endpoint:    endpoint,

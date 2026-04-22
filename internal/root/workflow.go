@@ -7,8 +7,8 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/itunified-io/proxclt/pkg/kickstart"
-	"github.com/itunified-io/proxclt/pkg/workflow"
+	"github.com/itunified-io/proxctl/pkg/kickstart"
+	"github.com/itunified-io/proxctl/pkg/workflow"
 	"github.com/spf13/cobra"
 )
 

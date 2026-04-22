@@ -6,7 +6,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Linux is the linux.yaml passthrough manifest. proxclt reads this for
+// Linux is the linux.yaml passthrough manifest. proxctl reads this for
 // cross-file validation (disk tag refs) but otherwise treats it as opaque.
 type Linux struct {
 	Kind string         `yaml:"kind" json:"kind" validate:"required,eq=Linux"`

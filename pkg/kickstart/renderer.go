@@ -1,5 +1,5 @@
 // Package kickstart renders per-node kickstart/preseed files from the
-// proxclt env manifest and bundles them into bootable ISOs.
+// proxctl env manifest and bundles them into bootable ISOs.
 package kickstart
 
 import (
@@ -13,7 +13,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/itunified-io/proxclt/pkg/config"
+	"github.com/itunified-io/proxctl/pkg/config"
 )
 
 //go:embed templates/common/*.tmpl templates/*/*.tmpl

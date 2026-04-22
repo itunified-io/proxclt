@@ -1,4 +1,4 @@
-// Package root wires all proxclt subcommands into a single Cobra tree.
+// Package root wires all proxctl subcommands into a single Cobra tree.
 package root
 
 import (
@@ -19,15 +19,15 @@ var (
 // New returns a fully configured root command.
 func New() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "proxclt",
+		Use:   "proxctl",
 		Short: "Proxmox VM provisioning CLI — kickstart, lifecycle, workflows",
-		Long: `proxclt is a standalone Go binary for Proxmox VM provisioning.
+		Long: `proxctl is a standalone Go binary for Proxmox VM provisioning.
 
 See docs/ for the full user guide, configuration reference, and licensing model.`,
 		SilenceUsage: true,
 	}
 
-	root.PersistentFlags().StringVar(&flagContext, "context", "", "proxclt context to use (overrides current-context)")
+	root.PersistentFlags().StringVar(&flagContext, "context", "", "proxctl context to use (overrides current-context)")
 	root.PersistentFlags().StringVar(&flagEnv, "env", "", "env manifest name or path (overrides current env)")
 	root.PersistentFlags().BoolVar(&flagJSON, "json", false, "emit JSON on stdout (stderr still carries logs)")
 	root.PersistentFlags().BoolVarP(&flagYes, "yes", "y", false, "assume yes for confirm prompts (DANGEROUS)")

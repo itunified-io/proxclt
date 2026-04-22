@@ -32,7 +32,7 @@ func TestVersionCmd_Runs(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("version returned error: %v", err)
 	}
-	if !strings.Contains(buf.String(), "proxclt") {
-		t.Errorf("version output missing 'proxclt': %q", buf.String())
+	if !strings.Contains(buf.String(), "proxctl") {
+		t.Errorf("version output missing 'proxctl': %q", buf.String())
 	}
 }

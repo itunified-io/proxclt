@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/itunified-io/proxclt/pkg/config"
-	"github.com/itunified-io/proxclt/pkg/kickstart"
-	"github.com/itunified-io/proxclt/pkg/proxmox"
+	"github.com/itunified-io/proxctl/pkg/config"
+	"github.com/itunified-io/proxctl/pkg/kickstart"
+	"github.com/itunified-io/proxctl/pkg/proxmox"
 )
 
 func testEnv() *config.Env {

@@ -1,11 +1,11 @@
 {{- define "post_common" -}}
 %post --erroronfail --log=/var/log/ks-post.log
-echo "proxclt post-install start: $(date)"
+echo "proxctl post-install start: $(date)"
 
 # Chrony servers
 {{- if .Kickstart.ChronyServers }}
 {
-  echo "# proxclt chrony servers"
+  echo "# proxctl chrony servers"
 {{- range $srv := .Kickstart.ChronyServers }}
   echo "server {{ $srv }} iburst"
 {{- end }}

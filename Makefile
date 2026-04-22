@@ -1,5 +1,5 @@
-BINARY := proxclt
-PKG    := github.com/itunified-io/proxclt
+BINARY := proxctl
+PKG    := github.com/itunified-io/proxctl
 VERSION ?= dev
 COMMIT  := $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 DATE    := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -12,7 +12,7 @@ LDFLAGS := -s -w \
 .PHONY: build test lint vet staticcheck docs clean
 
 build:
-	CGO_ENABLED=0 go build -trimpath -ldflags="$(LDFLAGS)" -o bin/$(BINARY) ./cmd/proxclt
+	CGO_ENABLED=0 go build -trimpath -ldflags="$(LDFLAGS)" -o bin/$(BINARY) ./cmd/proxctl
 
 test:
 	go test ./...

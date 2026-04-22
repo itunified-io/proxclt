@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/itunified-io/proxclt/pkg/config"
+	"github.com/itunified-io/proxctl/pkg/config"
 )
 
 func buildEnv() *config.Env {
@@ -46,7 +46,7 @@ func buildEnv() *config.Env {
 			UpdateSystem:   true,
 			ChronyServers:  []string{"pool.ntp.org"},
 			SSHKeys: map[string][]string{
-				"root": {"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITESTKEY test@proxclt"},
+				"root": {"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITESTKEY test@proxctl"},
 			},
 			Packages: &config.PackagesConfig{
 				Base: []string{"htop"},
@@ -54,7 +54,7 @@ func buildEnv() *config.Env {
 			},
 			Firewall: &config.KSFirewall{Enabled: true},
 			AdditionalUsers: []config.AdditionalUser{
-				{Name: "deploy", Wheel: true, SSHKey: "ssh-rsa AAAAB3DEPLOYKEY deploy@proxclt"},
+				{Name: "deploy", Wheel: true, SSHKey: "ssh-rsa AAAAB3DEPLOYKEY deploy@proxctl"},
 			},
 			Sudo: &config.SudoConfig{WheelNopasswd: true},
 		},

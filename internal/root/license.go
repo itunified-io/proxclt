@@ -5,7 +5,7 @@ import "github.com/spf13/cobra"
 func newLicenseCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "license",
-		Short: "Inspect + activate proxclt license (~/.proxclt/license.jwt)",
+		Short: "Inspect + activate proxctl license (~/.proxctl/license.jwt)",
 	}
 	c.AddCommand(
 		&cobra.Command{Use: "status", Short: "Current tier, expiry, seats", RunE: notImplemented("license status")},
