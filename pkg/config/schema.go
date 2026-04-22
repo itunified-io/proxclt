@@ -1,11 +1,23 @@
 package config
 
-import "errors"
+import (
+	"encoding/json"
+	"fmt"
 
-// ExportJSONSchema emits JSON Schema documents for each apiVersion/kind
-// into the target directory. Phase 1 stub.
-//
-// Phase 2 will use github.com/invopop/jsonschema to reflect these structs.
-func ExportJSONSchema(_ string) error {
-	return errors.New("config.ExportJSONSchema: not implemented yet (scaffold)")
+	"github.com/invopop/jsonschema"
+)
+
+// GenerateSchema produces a JSON Schema document for the Env model.
+func GenerateSchema() (string, error) {
+	r := &jsonschema.Reflector{
+		AllowAdditionalProperties:  false,
+		RequiredFromJSONSchemaTags: false,
+		DoNotReference:             false,
+	}
+	schema := r.Reflect(&Env{})
+	b, err := json.MarshalIndent(schema, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("marshal schema: %w", err)
+	}
+	return string(b), nil
 }
