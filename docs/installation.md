@@ -218,7 +218,7 @@ proxctl stores state under `~/.proxctl/` by default. Override with
 ```
 ~/.proxctl/
 ├── config.yaml          # kubectl-style contexts (Proxmox endpoints + tokens)
-├── envs.yaml            # registered env bookmarks
+├── stacks.yaml            # registered env bookmarks
 ├── license.jwt          # optional license file
 ├── profiles/            # user profile overrides (optional)
 │   └── my-profile.yaml

@@ -22,12 +22,12 @@ proxctl config use-context lab-pve \
   --token-id 'root@pam!proxctl' \
   --token-secret "$PVE_TOKEN_SECRET"
 
-# 2. Scaffold + validate an env
-proxctl env new my-first-vm --from host-only --dir ./envs/my-first-vm
+# 2. Scaffold + validate a stack
+proxctl stack new my-first-vm --from host-only --dir ./envs/my-first-vm
 proxctl config validate ./envs/my-first-vm/lab.yaml
 
 # 3. Apply
-proxctl workflow up --env ./envs/my-first-vm/lab.yaml --yes
+proxctl workflow up --stack ./envs/my-first-vm/lab.yaml --yes
 ```
 
 That's it — one command provisions the VM, uploads the first-boot ISO, boots

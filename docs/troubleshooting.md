@@ -101,12 +101,12 @@ override the template.
 
 ```bash
 # Find the hung task
-proxctl --verbose vm status <node> --env <env>
+proxctl --verbose vm status <node> --stack <env>
 
 # In Proxmox UI → Node → Tasks, kill the stuck task
 # Then:
-proxctl vm delete <node> --env <env> --yes
-proxctl workflow up --env <env> --yes   # idempotent; recreates cleanly
+proxctl vm delete <node> --stack <env> --yes
+proxctl workflow up --stack <env> --yes   # idempotent; recreates cleanly
 ```
 
 ## 9. SSH reachability fails after install

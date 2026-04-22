@@ -31,16 +31,19 @@ commands. The root command lives at
 - [`proxctl config current-context`](cli-reference/proxctl_config_current-context.md)
 - [`proxctl config get-contexts`](cli-reference/proxctl_config_get-contexts.md)
 
-### `proxctl env`
+### `proxctl stack`
 
-- [`proxctl env`](cli-reference/proxctl_env.md)
-- [`proxctl env new`](cli-reference/proxctl_env_new.md)
-- [`proxctl env list`](cli-reference/proxctl_env_list.md)
-- [`proxctl env use`](cli-reference/proxctl_env_use.md)
-- [`proxctl env current`](cli-reference/proxctl_env_current.md)
-- [`proxctl env add`](cli-reference/proxctl_env_add.md)
-- [`proxctl env remove`](cli-reference/proxctl_env_remove.md)
-- [`proxctl env show`](cli-reference/proxctl_env_show.md)
+Renamed from `proxctl env` in v2026.04.11.8 (#15). The `env` verb remains as a
+deprecated alias for one release.
+
+- [`proxctl stack`](cli-reference/proxctl_stack.md)
+- [`proxctl stack new`](cli-reference/proxctl_stack_new.md)
+- [`proxctl stack list`](cli-reference/proxctl_stack_list.md)
+- [`proxctl stack use`](cli-reference/proxctl_stack_use.md)
+- [`proxctl stack current`](cli-reference/proxctl_stack_current.md)
+- [`proxctl stack add`](cli-reference/proxctl_stack_add.md)
+- [`proxctl stack remove`](cli-reference/proxctl_stack_remove.md)
+- [`proxctl stack show`](cli-reference/proxctl_stack_show.md)
 
 ### `proxctl vm`
 

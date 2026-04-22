@@ -18,8 +18,8 @@ proxctl kickstart upload FILE [flags]
 
 ```
       --context string   proxctl context to use (overrides current-context)
-      --env string       env manifest name or path (overrides current env)
       --json             emit JSON on stdout (stderr still carries logs)
+      --stack string     stack manifest name or path (overrides current stack)
   -y, --yes              assume yes for confirm prompts (DANGEROUS)
 ```
 

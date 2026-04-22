@@ -12,8 +12,8 @@ Manage individual VMs (create, start, stop, delete, list, status)
 
 ```
       --context string   proxctl context to use (overrides current-context)
-      --env string       env manifest name or path (overrides current env)
       --json             emit JSON on stdout (stderr still carries logs)
+      --stack string     stack manifest name or path (overrides current stack)
   -y, --yes              assume yes for confirm prompts (DANGEROUS)
 ```
 

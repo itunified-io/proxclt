@@ -48,7 +48,7 @@ The simplest profile is `host-only` — a single Linux VM with no cluster
 semantics. Great for validating the install end-to-end.
 
 ```bash
-proxctl env new my-first-vm --from host-only --dir ./envs/my-first-vm
+proxctl stack new my-first-vm --from host-only --dir ./envs/my-first-vm
 ```
 
 This lays down a split-file env:
@@ -80,7 +80,7 @@ Proxmox API — always check this before running `up`.
 ## 5. Plan
 
 ```bash
-proxctl workflow plan --env ./envs/my-first-vm/lab.yaml
+proxctl workflow plan --stack ./envs/my-first-vm/lab.yaml
 ```
 
 Output shows the ordered actions proxctl will take — VM create, ISO upload
@@ -90,7 +90,7 @@ applied yet.
 ## 6. Apply
 
 ```bash
-proxctl workflow up --env ./envs/my-first-vm/lab.yaml --yes
+proxctl workflow up --stack ./envs/my-first-vm/lab.yaml --yes
 ```
 
 Progress is streamed on stderr; the final state summary goes to stdout
@@ -106,11 +106,11 @@ Progress is streamed on stderr; the final state summary goes to stdout
 ## 7. Verify
 
 ```bash
-proxctl workflow status --env ./envs/my-first-vm/lab.yaml
+proxctl workflow status --stack ./envs/my-first-vm/lab.yaml
 # → NODE        VMID  STATE    IP              SSH
 #    host-a     101   running  10.10.0.50      reachable
 
-proxctl workflow verify --env ./envs/my-first-vm/lab.yaml
+proxctl workflow verify --stack ./envs/my-first-vm/lab.yaml
 # → all reachability checks passed
 ```
 
@@ -121,14 +121,14 @@ UI — kickstart errors surface there. See
 ## 8. Teardown
 
 ```bash
-proxctl workflow down --env ./envs/my-first-vm/lab.yaml --yes
+proxctl workflow down --stack ./envs/my-first-vm/lab.yaml --yes
 # stops + destroys the VM; preserves the env manifest
 ```
 
 To also delete the env registry entry:
 
 ```bash
-proxctl env remove my-first-vm
+proxctl stack remove my-first-vm
 ```
 
 ---

@@ -129,7 +129,7 @@ Full example at [`docs/examples/pg-single/`](examples/pg-single).
 ### host-only
 
 Minimal Linux host baseline — one VM, no cluster, no database. Used by the
-host-monitoring test suite and as the default for `proxctl env new`.
+host-monitoring test suite and as the default for `proxctl stack new`.
 
 **Use case.** Smoke-test your Proxmox + proxctl setup, or provision a plain
 Linux box (jumpbox, monitoring, utility VM).

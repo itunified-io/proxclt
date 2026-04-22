@@ -1,27 +1,27 @@
-## proxctl env add
+## proxctl stack remove
 
-Bookmark an env (local path or git ref)
+Remove a stack bookmark
 
 ```
-proxctl env add NAME [flags]
+proxctl stack remove NAME [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for add
+  -h, --help   help for remove
 ```
 
 ### Options inherited from parent commands
 
 ```
       --context string   proxctl context to use (overrides current-context)
-      --env string       env manifest name or path (overrides current env)
       --json             emit JSON on stdout (stderr still carries logs)
+      --stack string     stack manifest name or path (overrides current stack)
   -y, --yes              assume yes for confirm prompts (DANGEROUS)
 ```
 
 ### SEE ALSO
 
-* [proxctl env](proxctl_env.md)	 - Manage env bookmarks (~/.proxctl/envs.yaml)
+* [proxctl stack](proxctl_stack.md)	 - Manage stack bookmarks (~/.proxctl/stacks.yaml)
 

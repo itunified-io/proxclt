@@ -50,7 +50,7 @@ spec:
     - $ref: ./db-orcl.yaml
 hooks:
   pre_apply:
-    - run: "echo entering apply for $PROXCTL_ENV"
+    - run: "echo entering apply for $PROXCTL_STACK"
   post_apply: []
   pre_destroy: []
   post_destroy: []
@@ -78,7 +78,7 @@ hooks:
 | `hooks.pre_destroy`             | []Hook  | no  | Run before `workflow down`. |
 | `hooks.post_destroy`            | []Hook  | no  | Run after `workflow down`. |
 
-Each hook is `{ run: "cmd" }` — a shell command run with `PROXCTL_ENV`,
+Each hook is `{ run: "cmd" }` — a shell command run with `PROXCTL_STACK`,
 `PROXCTL_CONTEXT`, and `PROXCTL_HOME` in the environment.
 
 ---

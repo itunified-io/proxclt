@@ -76,31 +76,31 @@ Every subcommand accepts `--context NAME` to override the active one.
 ## The env registry
 
 Envs are stored wherever you want them on disk (typically a git repo). The
-registry `~/.proxctl/envs.yaml` is just a **bookmark file** that maps short
+registry `~/.proxctl/stacks.yaml` is just a **bookmark file** that maps short
 names to paths — identical to `~/.kube/config` for envs.
 
 ```bash
 # Scaffold + register a new env
-proxctl env new rac-prod --from oracle-rac-2node --dir ./envs/rac-prod
+proxctl stack new rac-prod --from oracle-rac-2node --dir ./envs/rac-prod
 
 # Register an existing env
-proxctl env add rac-prod ./envs/rac-prod/lab.yaml
+proxctl stack add rac-prod ./envs/rac-prod/lab.yaml
 
 # List / switch / show
-proxctl env list
-proxctl env use rac-prod
-proxctl env current
-proxctl env show rac-prod
+proxctl stack list
+proxctl stack use rac-prod
+proxctl stack current
+proxctl stack show rac-prod
 
 # Remove bookmark (does not delete files)
-proxctl env remove rac-prod
+proxctl stack remove rac-prod
 ```
 
-Every subcommand that needs an env accepts `--env NAME_OR_PATH`:
+Every subcommand that needs an env accepts `--stack NAME_OR_PATH`:
 
 ```bash
-proxctl workflow plan --env rac-prod
-proxctl workflow plan --env ./envs/rac-prod/lab.yaml
+proxctl workflow plan --stack rac-prod
+proxctl workflow plan --stack ./envs/rac-prod/lab.yaml
 ```
 
 ---
@@ -188,28 +188,28 @@ ad-hoc interventions; use `proxctl workflow …` for env-level orchestration.
 
 ```bash
 # Create a VM from the env's hypervisor.yaml (does not boot)
-proxctl vm create rac-node-1 --env rac-prod
+proxctl vm create rac-node-1 --stack rac-prod
 
 # Power ops
-proxctl vm start  rac-node-1 --env rac-prod
-proxctl vm stop   rac-node-1 --env rac-prod --graceful
-proxctl vm reboot rac-node-1 --env rac-prod
+proxctl vm start  rac-node-1 --stack rac-prod
+proxctl vm stop   rac-node-1 --stack rac-prod --graceful
+proxctl vm reboot rac-node-1 --stack rac-prod
 
 # Inventory
-proxctl vm list --env rac-prod
-proxctl vm status rac-node-1 --env rac-prod
+proxctl vm list --stack rac-prod
+proxctl vm status rac-node-1 --stack rac-prod
 
 # Destroy
-proxctl vm delete rac-node-1 --env rac-prod --yes
+proxctl vm delete rac-node-1 --stack rac-prod --yes
 ```
 
 Snapshots:
 
 ```bash
-proxctl snapshot create rac-node-1 pre-patch --env rac-prod
-proxctl snapshot list   rac-node-1 --env rac-prod
-proxctl snapshot restore rac-node-1 pre-patch --env rac-prod
-proxctl snapshot delete rac-node-1 pre-patch --env rac-prod
+proxctl snapshot create rac-node-1 pre-patch --stack rac-prod
+proxctl snapshot list   rac-node-1 --stack rac-prod
+proxctl snapshot restore rac-node-1 pre-patch --stack rac-prod
+proxctl snapshot delete rac-node-1 pre-patch --stack rac-prod
 ```
 
 All lifecycle commands are **idempotent** where the Proxmox API allows it —
@@ -225,11 +225,11 @@ via `xorriso` (falls back to `mkisofs`).
 
 ```bash
 # Render the kickstart to stdout (no side effects)
-proxctl kickstart generate rac-node-1 --env rac-prod
+proxctl kickstart generate rac-node-1 --stack rac-prod
 
 # Build + upload the first-boot ISO
-proxctl kickstart build-iso rac-node-1 --env rac-prod --out /tmp/ks.iso
-proxctl kickstart upload /tmp/ks.iso --env rac-prod --storage local
+proxctl kickstart build-iso rac-node-1 --stack rac-prod --out /tmp/ks.iso
+proxctl kickstart upload /tmp/ks.iso --stack rac-prod --storage local
 
 # List supported distros
 proxctl kickstart distros
@@ -239,8 +239,8 @@ At install time proxctl also knows how to configure the boot order so the
 first boot uses the install ISO and subsequent boots fall through to disk:
 
 ```bash
-proxctl boot configure-first-boot rac-node-1 --env rac-prod
-proxctl boot eject-iso            rac-node-1 --env rac-prod
+proxctl boot configure-first-boot rac-node-1 --stack rac-prod
+proxctl boot eject-iso            rac-node-1 --stack rac-prod
 ```
 
 Supported distros at launch: Oracle Linux 8, Oracle Linux 9, Ubuntu 22.04.
@@ -256,17 +256,17 @@ the full `plan → apply → verify` pipeline across every VM.
 
 ```bash
 # Dry-run
-proxctl workflow plan --env rac-prod
+proxctl workflow plan --stack rac-prod
 
 # Apply
-proxctl workflow up --env rac-prod --yes
+proxctl workflow up --stack rac-prod --yes
 
 # Inspect
-proxctl workflow status --env rac-prod
-proxctl workflow verify --env rac-prod
+proxctl workflow status --stack rac-prod
+proxctl workflow verify --stack rac-prod
 
 # Teardown
-proxctl workflow down --env rac-prod --yes
+proxctl workflow down --stack rac-prod --yes
 ```
 
 `up` internally calls, per node:
@@ -304,7 +304,7 @@ If the env has **two or more** nodes, proxctl automatically switches to
   concurrency is forced to 1 even for multi-node envs.
 
 ```bash
-proxctl workflow up --env rac-prod --continue-on-error --parallel 2
+proxctl workflow up --stack rac-prod --continue-on-error --parallel 2
 ```
 
 ---
@@ -331,11 +331,11 @@ Manual rollback is also available:
 
 ```bash
 # Restore from a snapshot
-proxctl snapshot restore rac-node-1 pre-patch --env rac-prod
+proxctl snapshot restore rac-node-1 pre-patch --stack rac-prod
 
 # Full teardown + re-apply
-proxctl workflow down --env rac-prod --yes
-proxctl workflow up   --env rac-prod --yes
+proxctl workflow down --stack rac-prod --yes
+proxctl workflow up   --stack rac-prod --yes
 ```
 
 Snapshots are the recommended pre-patch checkpoint because they are cheap on

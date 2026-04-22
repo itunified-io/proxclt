@@ -1,27 +1,27 @@
-## proxctl env show
+## proxctl stack list
 
-Show resolved paths + sha of env
+List bookmarked stacks
 
 ```
-proxctl env show [NAME] [flags]
+proxctl stack list [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for show
+  -h, --help   help for list
 ```
 
 ### Options inherited from parent commands
 
 ```
       --context string   proxctl context to use (overrides current-context)
-      --env string       env manifest name or path (overrides current env)
       --json             emit JSON on stdout (stderr still carries logs)
+      --stack string     stack manifest name or path (overrides current stack)
   -y, --yes              assume yes for confirm prompts (DANGEROUS)
 ```
 
 ### SEE ALSO
 
-* [proxctl env](proxctl_env.md)	 - Manage env bookmarks (~/.proxctl/envs.yaml)
+* [proxctl stack](proxctl_stack.md)	 - Manage stack bookmarks (~/.proxctl/stacks.yaml)
 
