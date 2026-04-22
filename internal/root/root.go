@@ -46,11 +46,14 @@ See docs/ for the full user guide, configuration reference, and licensing model.
 	return root
 }
 
+// osExit is indirected for tests.
+var osExit = os.Exit
+
 // Execute runs the root command; intended to be called from main.
 func Execute() {
 	if err := New().Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
+		osExit(1)
 	}
 }
 
