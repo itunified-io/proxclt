@@ -43,9 +43,13 @@ func isolateHome(t *testing.T) string {
 	t.Setenv("PROXCTL_INSECURE_TLS", "")
 	// Reset package-level flags that persist across tests.
 	flagContext = ""
+	flagStack = ""
 	flagEnv = ""
 	flagJSON = false
 	flagYes = false
+	envFlagDeprecated = false
+	envVarDeprecated = false
+	envDeprecated = false
 	return home
 }
 
@@ -172,7 +176,7 @@ func TestRoot_HelpListsAllSubcommands(t *testing.T) {
 	if err != nil {
 		t.Fatalf("--help: %v", err)
 	}
-	for _, want := range []string{"config", "env", "vm", "snapshot", "kickstart", "boot", "workflow", "license", "version"} {
+	for _, want := range []string{"config", "stack", "vm", "snapshot", "kickstart", "boot", "workflow", "license", "version"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("help missing subcommand %q\n%s", want, out)
 		}
@@ -268,6 +272,14 @@ func TestNotImplemented_Subcommands(t *testing.T) {
 		{"config", "use-context", "foo"},
 		{"config", "current-context"},
 		{"config", "get-contexts"},
+		{"stack", "new", "foo"},
+		{"stack", "list"},
+		{"stack", "use", "foo"},
+		{"stack", "current"},
+		{"stack", "add", "foo"},
+		{"stack", "remove", "foo"},
+		{"stack", "show"},
+		// Deprecated `env` alias must still function end-to-end (#15).
 		{"env", "new", "foo"},
 		{"env", "list"},
 		{"env", "use", "foo"},
@@ -1516,8 +1528,8 @@ func TestLoadEnvManifest_ParseError(t *testing.T) {
 func TestLoadEnvManifest_FlagEnv(t *testing.T) {
 	home := isolateHome(t)
 	envPath := writeEnvFixture(t, home)
-	flagEnv = envPath
-	t.Cleanup(func() { flagEnv = "" })
+	flagStack = envPath
+	t.Cleanup(func() { flagStack = "" })
 	env, err := loadEnvManifest("")
 	if err != nil {
 		t.Fatalf("loadEnvManifest: %v", err)
