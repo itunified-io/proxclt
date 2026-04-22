@@ -2,6 +2,38 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.11.8 — 2026-04-22
+
+### BREAKING — CLI verb rename `env` → `stack` (#15)
+
+Aligns proxctl's bookmark terminology with the `infrastructure/stacks/`
+convention. The on-disk manifest filename (`env.yaml`) and YAML kind
+(`kind: Env`) are unchanged — only the CLI verb, global flag, and registry
+filename were renamed.
+
+- CLI verb: `proxctl env …` → `proxctl stack …`
+- Global flag: `--env <path>` → `--stack <path>`
+- Config file: `~/.proxctl/envs.yaml` → `~/.proxctl/stacks.yaml`
+  (auto-renamed on first run; both paths accepted for one release)
+- Hook env var: `$PROXCTL_ENV` → `$PROXCTL_STACK`
+
+### Compatibility shims (removed in next major release)
+
+- `proxctl env <subcommand>` still works; emits one deprecation line on
+  stderr per invocation
+- `--env` flag accepted as alias with a one-time stderr warning
+- `$PROXCTL_ENV` promoted to `$PROXCTL_STACK` in the process environment
+  with a one-time stderr warning
+- `envs.yaml` is renamed in-place to `stacks.yaml` at process start; both
+  filenames present triggers a warning (stacks.yaml wins)
+
+### Tests
+
+- New `deprecation_test.go` covers: env-verb warning, --env flag promotion,
+  $PROXCTL_ENV promotion, envs.yaml migration (happy path + both-present +
+  rename failure + no-op)
+- Coverage: pkg/config 95.1%, pkg/workflow 96.4%, internal/root 95.2%
+
 ## v2026.04.11.7 — 2026-04-22
 
 ### Added — comprehensive documentation suite (#10)
