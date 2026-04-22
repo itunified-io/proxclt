@@ -44,16 +44,23 @@ type RenderContext struct {
 
 // NewRenderer loads all bundled templates.
 func NewRenderer() (*Renderer, error) {
+	return newRendererFromFS(templatesFS)
+}
+
+// newRendererFromFS is the injectable-FS variant of NewRenderer, used by tests
+// to exercise error paths around missing/corrupt templates without touching
+// the embedded filesystem.
+func newRendererFromFS(tfs fs.FS) (*Renderer, error) {
 	r := &Renderer{entries: map[string]*template.Template{}}
 
 	// Discover distro directories under templates/.
-	entries, err := fs.ReadDir(templatesFS, "templates")
+	entries, err := fs.ReadDir(tfs, "templates")
 	if err != nil {
 		return nil, fmt.Errorf("read templates dir: %w", err)
 	}
 
 	// Load common partials (we parse them into each distro's template set).
-	commonFiles, _ := fs.Glob(templatesFS, "templates/common/*.tmpl")
+	commonFiles, _ := fs.Glob(tfs, "templates/common/*.tmpl")
 
 	funcs := funcMap()
 
@@ -62,7 +69,7 @@ func NewRenderer() (*Renderer, error) {
 			continue
 		}
 		distro := e.Name()
-		distroFiles, err := fs.Glob(templatesFS, "templates/"+distro+"/*.tmpl")
+		distroFiles, err := fs.Glob(tfs, "templates/"+distro+"/*.tmpl")
 		if err != nil {
 			return nil, err
 		}
@@ -72,11 +79,11 @@ func NewRenderer() (*Renderer, error) {
 		t := template.New(distro).Funcs(funcs)
 		// Parse common partials first.
 		if len(commonFiles) > 0 {
-			if _, err := t.ParseFS(templatesFS, commonFiles...); err != nil {
+			if _, err := t.ParseFS(tfs, commonFiles...); err != nil {
 				return nil, fmt.Errorf("parse common: %w", err)
 			}
 		}
-		if _, err := t.ParseFS(templatesFS, distroFiles...); err != nil {
+		if _, err := t.ParseFS(tfs, distroFiles...); err != nil {
 			return nil, fmt.Errorf("parse distro %s: %w", distro, err)
 		}
 		r.entries[distro] = t

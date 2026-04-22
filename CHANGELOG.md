@@ -2,6 +2,23 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.11.4 — 2026-04-19
+
+### Tests — coverage hardening to ≥95% (#4)
+
+| Package | Before | After | Delta |
+|---------|--------|-------|-------|
+| pkg/config | 81.6% | **95.0%** | +13.4pp |
+| pkg/proxmox | 83.8% | **97.5%** | +13.7pp |
+| pkg/kickstart | 69.5% | **97.6%** | +28.1pp |
+| pkg/workflow | 53.7% | **98.0%** | +44.3pp |
+
+- ~127 new tests across 4 packages; no public API changes
+- Minor testability refactor in `pkg/kickstart`: extracted `newRendererFromFS(fs.FS)` for injectable test FS (public `NewRenderer()` unchanged)
+- All error paths + Rollback + HTTP error envelopes + CIDR/resolver/validator edge cases covered
+- Residual uncovered lines are genuinely unreachable via public API (defensive nil guards, stdlib error returns on happy-path inputs)
+- `pkg/license` (72.7%) and `internal/root` (19%) remain below 95% — CLI wiring tests are Phase 5 scope (integration tests)
+
 ## v2026.04.11.3 — 2026-04-19
 
 ### Changed (BREAKING)
