@@ -1,0 +1,15 @@
+{{- define "network" -}}
+# Network configuration
+{{- range $nic := .Node.NICs }}
+{{- if and $nic.IPv4 (eq $nic.Bootproto "static") }}
+network --device={{ $nic.NameField }} --bootproto=static --ip={{ cidrIP $nic.IPv4.Address }} --netmask={{ cidrNetmask $nic.IPv4.Address }}{{ if $nic.IPv4.Gateway }} --gateway={{ $nic.IPv4.Gateway }}{{ end }}{{ if $nic.IPv4.DNS }} --nameserver={{ join "," $nic.IPv4.DNS }}{{ end }} --activate --onboot=yes --hostname={{ $.FQDN }}
+{{- else if eq $nic.Bootproto "dhcp" }}
+network --device={{ $nic.NameField }} --bootproto=dhcp --activate --hostname={{ $.FQDN }}
+{{- else if eq $nic.Bootproto "none" }}
+network --device={{ $nic.NameField }} --bootproto=static --noipv4 --nodefroute --activate=no
+{{- end }}
+{{- end }}
+{{- if not .Node.NICs }}
+network --bootproto=dhcp --hostname={{ .FQDN }}
+{{- end }}
+{{- end -}}

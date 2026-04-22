@@ -1,0 +1,7 @@
+{{- define "firewall" -}}
+{{- if and .Kickstart.Firewall .Kickstart.Firewall.Enabled }}
+firewall --enabled --ssh
+{{- else }}
+firewall --disabled
+{{- end }}
+{{- end -}}

@@ -1,0 +1,33 @@
+{{- define "users" -}}
+{{- range $u := .Kickstart.AdditionalUsers }}
+user --name={{ $u.Name }}{{ if $u.Wheel }} --groups=wheel{{ end }}
+{{- end }}
+
+%post --erroronfail
+# SSH keys for root and additional users
+mkdir -p /root/.ssh && chmod 700 /root/.ssh
+{{- range $user, $keys := .Kickstart.SSHKeys }}
+{{- if eq $user "root" }}
+{{- range $k := $keys }}
+echo {{ $k | squote }} >> /root/.ssh/authorized_keys
+{{- end }}
+{{- else }}
+mkdir -p /home/{{ $user }}/.ssh && chmod 700 /home/{{ $user }}/.ssh
+{{- range $k := $keys }}
+echo {{ $k | squote }} >> /home/{{ $user }}/.ssh/authorized_keys
+{{- end }}
+chown -R {{ $user }}:{{ $user }} /home/{{ $user }}/.ssh || true
+chmod 600 /home/{{ $user }}/.ssh/authorized_keys || true
+{{- end }}
+{{- end }}
+chmod 600 /root/.ssh/authorized_keys || true
+{{- range $u := .Kickstart.AdditionalUsers }}
+{{- if $u.SSHKey }}
+mkdir -p /home/{{ $u.Name }}/.ssh && chmod 700 /home/{{ $u.Name }}/.ssh
+echo {{ $u.SSHKey | squote }} >> /home/{{ $u.Name }}/.ssh/authorized_keys
+chown -R {{ $u.Name }}:{{ $u.Name }} /home/{{ $u.Name }}/.ssh
+chmod 600 /home/{{ $u.Name }}/.ssh/authorized_keys
+{{- end }}
+{{- end }}
+%end
+{{- end -}}

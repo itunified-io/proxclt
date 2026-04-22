@@ -1,0 +1,70 @@
+#version=OL8
+# proxclt-generated kickstart for {{ .FQDN }}
+# Distro: {{ .Kickstart.Distro }}
+
+{{ if eq .Kickstart.Mode "graphical" }}graphical{{ else }}text{{ end }}
+
+auth --enableshadow --passalgo=sha512
+
+lang {{ if .Kickstart.Lang }}{{ .Kickstart.Lang }}{{ else }}en_US.UTF-8{{ end }}
+keyboard --vckeymap={{ if .Kickstart.KeyboardLayout }}{{ .Kickstart.KeyboardLayout }}{{ else }}us{{ end }} --xlayouts='{{ if .Kickstart.KeyboardLayout }}{{ .Kickstart.KeyboardLayout }}{{ else }}us{{ end }}'
+
+timezone --utc {{ if .Kickstart.Timezone }}{{ .Kickstart.Timezone }}{{ else }}UTC{{ end }}
+
+{{ template "network" . }}
+
+{{ template "disk" . }}
+
+{{ template "firewall" . }}
+
+selinux --enforcing
+rootpw --lock
+services --enabled="chronyd,sshd" --disabled="postfix"
+
+{{- range $u := .Kickstart.AdditionalUsers }}
+user --name={{ $u.Name }}{{ if $u.Wheel }} --groups=wheel{{ end }}
+{{- end }}
+
+reboot
+
+%packages
+@base
+@core
+chrony
+openssh-server
+kexec-tools
+net-tools
+vim
+bash-completion
+policycoreutils-python-utils
+firewalld
+rsync
+{{- if and .Kickstart.Packages .Kickstart.Packages.Base }}
+{{- range $p := .Kickstart.Packages.Base }}
+{{ $p }}
+{{- end }}
+{{- end }}
+%end
+
+{{ template "post_common" . }}
+
+# SSH keys
+%post --erroronfail
+mkdir -p /root/.ssh && chmod 700 /root/.ssh
+{{- range $user, $keys := .Kickstart.SSHKeys }}
+{{- if eq $user "root" }}
+{{- range $k := $keys }}
+echo {{ $k | squote }} >> /root/.ssh/authorized_keys
+{{- end }}
+{{- end }}
+{{- end }}
+chmod 600 /root/.ssh/authorized_keys || true
+{{- range $u := .Kickstart.AdditionalUsers }}
+{{- if $u.SSHKey }}
+mkdir -p /home/{{ $u.Name }}/.ssh && chmod 700 /home/{{ $u.Name }}/.ssh
+echo {{ $u.SSHKey | squote }} >> /home/{{ $u.Name }}/.ssh/authorized_keys
+chown -R {{ $u.Name }}:{{ $u.Name }} /home/{{ $u.Name }}/.ssh || true
+chmod 600 /home/{{ $u.Name }}/.ssh/authorized_keys || true
+{{- end }}
+{{- end }}
+%end

@@ -1,0 +1,81 @@
+#version=OL9
+# proxclt-generated kickstart for {{ .FQDN }}
+# Distro: {{ .Kickstart.Distro }}
+
+# Installation mode
+{{ if eq .Kickstart.Mode "graphical" }}graphical{{ else }}text{{ end }}
+
+# System authorization
+auth --enableshadow --passalgo=sha512
+
+# Language + keyboard
+lang {{ if .Kickstart.Lang }}{{ .Kickstart.Lang }}{{ else }}en_US.UTF-8{{ end }}
+keyboard --vckeymap={{ if .Kickstart.KeyboardLayout }}{{ .Kickstart.KeyboardLayout }}{{ else }}us{{ end }} --xlayouts='{{ if .Kickstart.KeyboardLayout }}{{ .Kickstart.KeyboardLayout }}{{ else }}us{{ end }}'
+
+# Timezone
+timezone --utc {{ if .Kickstart.Timezone }}{{ .Kickstart.Timezone }}{{ else }}UTC{{ end }}
+
+# Network
+{{ template "network" . }}
+
+# Disk / bootloader
+{{ template "disk" . }}
+
+# Firewall
+{{ template "firewall" . }}
+
+# SELinux
+selinux --enforcing
+
+# Root password — randomized; must be reset via SSH on first login.
+rootpw --lock
+
+# Services
+services --enabled="chronyd,sshd"
+
+# Users (declarations)
+{{- range $u := .Kickstart.AdditionalUsers }}
+user --name={{ $u.Name }}{{ if $u.Wheel }} --groups=wheel{{ end }}
+{{- end }}
+
+# Reboot after install
+reboot
+
+%packages
+@^minimal-environment
+@core
+chrony
+openssh-server
+vim-minimal
+bash-completion
+tar
+rsync
+{{- if and .Kickstart.Packages .Kickstart.Packages.Base }}
+{{- range $p := .Kickstart.Packages.Base }}
+{{ $p }}
+{{- end }}
+{{- end }}
+%end
+
+{{ template "post_common" . }}
+
+# SSH keys
+%post --erroronfail
+mkdir -p /root/.ssh && chmod 700 /root/.ssh
+{{- range $user, $keys := .Kickstart.SSHKeys }}
+{{- if eq $user "root" }}
+{{- range $k := $keys }}
+echo {{ $k | squote }} >> /root/.ssh/authorized_keys
+{{- end }}
+{{- end }}
+{{- end }}
+chmod 600 /root/.ssh/authorized_keys || true
+{{- range $u := .Kickstart.AdditionalUsers }}
+{{- if $u.SSHKey }}
+mkdir -p /home/{{ $u.Name }}/.ssh && chmod 700 /home/{{ $u.Name }}/.ssh
+echo {{ $u.SSHKey | squote }} >> /home/{{ $u.Name }}/.ssh/authorized_keys
+chown -R {{ $u.Name }}:{{ $u.Name }} /home/{{ $u.Name }}/.ssh || true
+chmod 600 /home/{{ $u.Name }}/.ssh/authorized_keys || true
+{{- end }}
+{{- end }}
+%end
