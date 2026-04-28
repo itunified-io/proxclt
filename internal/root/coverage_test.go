@@ -53,9 +53,10 @@ func isolateHome(t *testing.T) string {
 	return home
 }
 
-// writeEnvFixture writes an inline env.yaml into dir. An inline manifest is used
-// because loadEnvManifest() in clientutil.go does a raw yaml.Unmarshal (no $ref
-// resolution), so fixtures must set Hypervisor.Inline directly.
+// writeEnvFixture writes an inline env.yaml into dir. Both inline and $ref-
+// composed manifests are supported by loadEnvManifest (which now routes through
+// config.Load — see #19); this helper covers the inline path. For $ref tests,
+// use writeRefEnvFixture.
 func writeEnvFixture(t *testing.T, dir string) string {
 	t.Helper()
 	// Also copy the $ref-style fixture used by config validate/render tests.
@@ -549,15 +550,16 @@ func TestVM_Status_UnknownNode2(t *testing.T) {
 	}
 }
 
-func TestVM_List_HypervisorNotResolved(t *testing.T) {
-	// $ref fixture triggers "hypervisor not resolved" branch in vm list.
+func TestVM_List_RefFixtureLoadsAndProceeds(t *testing.T) {
+	// Post-#19: loadEnvManifest now routes through config.Load which resolves
+	// $ref pointers, so vm list against a $ref-composed env succeeds (does not
+	// produce "hypervisor not resolved" anymore).
 	home := isolateHome(t)
 	writeRefEnvFixture(t, home)
 	t.Chdir(home)
-	startProxmox(t, func(w http.ResponseWriter, r *http.Request) { writeJSON(w, nil) })
-	_, err := executeCmd(t, "vm", "list")
-	if err == nil || !strings.Contains(err.Error(), "hypervisor not resolved") {
-		t.Errorf("expected hypervisor error, got %v", err)
+	startProxmox(t, func(w http.ResponseWriter, r *http.Request) { writeJSON(w, []map[string]any{}) })
+	if _, err := executeCmd(t, "vm", "list"); err != nil {
+		t.Fatalf("vm list against $ref env: %v", err)
 	}
 }
 
@@ -1078,15 +1080,19 @@ func TestKickstart_Generate_SingleNode(t *testing.T) {
 	}
 }
 
-func TestKickstart_Generate_HypervisorNotResolved(t *testing.T) {
-	// Use the $ref-style fixture: loadEnvManifest does raw yaml.Unmarshal with
-	// no $ref resolution, so Hypervisor.Resolved() returns nil.
+func TestKickstart_Generate_RefFixtureLoaderResolvesRefs(t *testing.T) {
+	// Post-#19: loadEnvManifest now routes through config.Load which resolves
+	// $ref pointers. This test asserts the loader-level fix: kickstart generate
+	// against a $ref-composed env no longer fails with "hypervisor not resolved".
+	// Downstream errors (e.g. the shared testdata fixture has no kickstart distro
+	// set, so the renderer reports "env has no kickstart config") are acceptable
+	// here — they prove we got past the loader gate.
 	home := isolateHome(t)
 	writeRefEnvFixture(t, home)
 	t.Chdir(home)
 	_, err := executeCmd(t, "kickstart", "generate", "--out", filepath.Join(home, "out-ref"))
-	if err == nil || !strings.Contains(err.Error(), "hypervisor not resolved") {
-		t.Errorf("expected 'hypervisor not resolved', got %v", err)
+	if err != nil && strings.Contains(err.Error(), "hypervisor not resolved") {
+		t.Fatalf("loadEnvManifest still not resolving $refs: %v", err)
 	}
 }
 

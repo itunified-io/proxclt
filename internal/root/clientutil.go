@@ -79,6 +79,13 @@ func loadProxmoxClient() (*proxmox.Client, error) {
 // (the --stack path; the deprecated --env flag is folded into flagStack by
 // resolveDeprecatedFlags), then at ./env.yaml.
 //
+// Routes through config.Load so $ref pointers are resolved, profile extends are
+// applied, and secret placeholders are expanded — the same path
+// `proxctl config render` uses. Without this, callers' subsequent calls to
+// `env.Spec.Hypervisor.Resolved()` return nil with "hypervisor not resolved"
+// on any manifest that composes via $ref (the canonical pattern in
+// infrastructure/stacks/<stack>/env.yaml). See #19.
+//
 // NOTE: the on-disk filename stays `env.yaml` and the Go type stays
 // `config.Env`. Only the CLI verb/flag changed in #15. See CHANGELOG
 // v2026.04.11.8.
@@ -90,15 +97,14 @@ func loadEnvManifest(explicitPath string) (*config.Env, error) {
 	if path == "" {
 		path = "env.yaml"
 	}
-	data, err := os.ReadFile(path)
-	if err != nil {
+	if _, err := os.Stat(path); err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
-	var env config.Env
-	if err := yaml.Unmarshal(data, &env); err != nil {
-		return nil, fmt.Errorf("parse %s: %w", path, err)
+	env, err := config.Load(path)
+	if err != nil {
+		return nil, fmt.Errorf("load %s: %w", path, err)
 	}
-	return &env, nil
+	return env, nil
 }
 
 // resolveNodeRef pulls the ProxmoxRef (node name + vmid) for the given node name.

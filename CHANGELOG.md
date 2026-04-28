@@ -2,6 +2,31 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.28.1 — 2026-04-28
+
+### fix: kickstart/vm/workflow/boot subcommands resolve $ref envs (#19)
+
+`internal/root/clientutil.go:loadEnvManifest()` did a raw `yaml.Unmarshal`
+with no `$ref` resolution. Subcommands using it (`kickstart generate`,
+`vm list/get/create/start/stop/delete`, `boot ...`, `workflow ...`) failed
+with `Error: hypervisor not resolved` on any env manifest that composes via
+`$ref` — the canonical pattern in `infrastructure/stacks/<stack>/env.yaml`.
+
+The same env manifest loaded cleanly via `proxctl config render` /
+`proxctl config validate`, both of which already routed through
+`config.Load`. Fix is one call site: route `loadEnvManifest` through
+`config.Load` so `$ref` pointers are resolved, profile extends are applied,
+and secret placeholders are expanded — same path config render uses.
+
+Tests updated: two `*_HypervisorNotResolved` tests previously locked-in the
+buggy behaviour; renamed + flipped to assert the fix
+(`TestVM_List_RefFixtureLoadsAndProceeds`,
+`TestKickstart_Generate_RefFixtureLoaderResolvesRefs`). Stale comment on
+`writeEnvFixture` updated.
+
+Closes #19. Caught while running plan-034 `/lab-up --phase A,B,C` for the
+ext3+ext4 Oracle DG lab.
+
 ## v2026.04.11.8 — 2026-04-22
 
 ### BREAKING — CLI verb rename `env` → `stack` (#15)
