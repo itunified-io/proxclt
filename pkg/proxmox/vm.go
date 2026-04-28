@@ -108,12 +108,10 @@ func (o CreateOpts) Validate() error {
 //
 //	<storage>:<size>[,format=<fmt>][,shared=1]
 func (d DiskSpec) DiskString() string {
-	format := d.Format
-	if format == "" {
-		format = "raw"
-	}
 	parts := []string{fmt.Sprintf("%s:%s", d.Storage, d.Size)}
-	parts = append(parts, "format="+format)
+	if d.Format != "" {
+		parts = append(parts, "format="+d.Format)
+	}
 	if d.Shared {
 		parts = append(parts, "shared=1")
 	}
@@ -128,11 +126,11 @@ func (n NICSpec) NICString() string {
 	if model == "" {
 		model = "virtio"
 	}
-	head := model
-	if n.MAC != "" && !strings.EqualFold(n.MAC, "auto") {
-		head = model + "=" + n.MAC
+	mac := n.MAC
+	if mac == "" || strings.EqualFold(mac, "auto") {
+		mac = "auto"
 	}
-	parts := []string{head, "bridge=" + n.Bridge}
+	parts := []string{model + "=" + mac, "bridge=" + n.Bridge}
 	if n.Firewall {
 		parts = append(parts, "firewall=1")
 	}
@@ -196,7 +194,7 @@ func (c *Client) CreateVM(ctx context.Context, opts CreateOpts) error {
 		form.Set("ostype", opts.OSType)
 	}
 	if len(opts.Tags) > 0 {
-		form.Set("tags", strings.Join(opts.Tags, ";"))
+		form.Set("tags", strings.Join(opts.Tags, ","))
 	}
 	form.Set("agent", "1")
 	if opts.StartAtBoot {

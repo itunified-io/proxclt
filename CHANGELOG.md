@@ -2,6 +2,32 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.28.5 — 2026-04-28
+
+### fix: CreateVM form encoding for disk/NIC/tags (#27)
+
+Three serializer bugs in `pkg/proxmox/vm.go` caused Proxmox to reject
+`POST /nodes/{node}/qemu` with `400 Parameter verification failed`
+(duplicate-key errors on `scsi0`, `net0`; tags split mid-string):
+
+1. `DiskString` always emitted `format=raw`. Proxmox rejects an explicit
+   `format=` on `lvmthin` / `zfspool` storage with
+   "duplicate key in comma-separated list property: file". Fix: omit
+   `format=` unless caller explicitly sets `DiskSpec.Format`.
+
+2. `NICString` emitted bare `<model>,bridge=...` when MAC was empty/auto,
+   which Proxmox parses as a duplicate `model` key. Fix: always emit
+   `<model>=<mac>` (with `mac=auto` as the default sentinel).
+
+3. `CreateVM` joined `Tags` with `;`. Proxmox's form parser splits the
+   query body on `;` first, so multi-tag values were spilling into
+   adjacent params. Fix: join with `,` (Proxmox's documented separator).
+
+Tests in `pkg/proxmox/vm_test.go` updated for new expected wire forms.
+
+Caught while running `/lab-up --phase B` for ext3+ext4 in
+itunified-io/infrastructure (plan 034) — fifth gate after .1–.4.
+
 ## v2026.04.28.4 — 2026-04-28
 
 ### fix: buildCreateOpts resolves storage_class → backend (#25)
