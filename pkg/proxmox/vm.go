@@ -108,7 +108,7 @@ func (o CreateOpts) Validate() error {
 //
 //	<storage>:<size>[,format=<fmt>][,shared=1]
 func (d DiskSpec) DiskString() string {
-	parts := []string{fmt.Sprintf("%s:%s", d.Storage, d.Size)}
+	parts := []string{fmt.Sprintf("%s:%s", d.Storage, normalizeSizeGiB(d.Size))}
 	if d.Format != "" {
 		parts = append(parts, "format="+d.Format)
 	}
@@ -116,6 +116,43 @@ func (d DiskSpec) DiskString() string {
 		parts = append(parts, "shared=1")
 	}
 	return strings.Join(parts, ",")
+}
+
+// normalizeSizeGiB strips human-readable size suffixes ("64G", "100GB", "1T")
+// and returns the integer-GiB form Proxmox's qemu-create API expects on the
+// `<storage>:<gib>` field. Non-numeric or already-bare values are returned
+// as-is so callers can pass volume references unchanged.
+func normalizeSizeGiB(s string) string {
+	if s == "" {
+		return s
+	}
+	end := len(s)
+	for end > 0 {
+		c := s[end-1]
+		if c >= '0' && c <= '9' {
+			break
+		}
+		end--
+	}
+	if end == 0 || end == len(s) {
+		return s
+	}
+	num := s[:end]
+	suffix := strings.ToUpper(strings.TrimSpace(s[end:]))
+	switch suffix {
+	case "G", "GB", "GIB":
+		return num
+	case "T", "TB", "TIB":
+		// 1 TiB = 1024 GiB. Keep as multiplier when input is integer.
+		if n, err := strconv.Atoi(num); err == nil {
+			return strconv.Itoa(n * 1024)
+		}
+	case "M", "MB", "MIB":
+		if n, err := strconv.Atoi(num); err == nil && n%1024 == 0 {
+			return strconv.Itoa(n / 1024)
+		}
+	}
+	return s
 }
 
 // NICString formats a NICSpec as a Proxmox form value.
@@ -126,11 +163,11 @@ func (n NICSpec) NICString() string {
 	if model == "" {
 		model = "virtio"
 	}
-	mac := n.MAC
-	if mac == "" || strings.EqualFold(mac, "auto") {
-		mac = "auto"
+	head := model
+	if n.MAC != "" && !strings.EqualFold(n.MAC, "auto") {
+		head = model + "=" + n.MAC
 	}
-	parts := []string{model + "=" + mac, "bridge=" + n.Bridge}
+	parts := []string{head, "bridge=" + n.Bridge}
 	if n.Firewall {
 		parts = append(parts, "firewall=1")
 	}
@@ -144,15 +181,16 @@ func (n NICSpec) NICString() string {
 //
 //	<storage>:1,format=<fmt>,efitype=4m,pre-enrolled-keys=<0|1>
 func (e EFIDiskSpec) EFIDiskString() string {
-	format := e.Format
-	if format == "" {
-		format = "raw"
-	}
 	pre := "0"
 	if e.PreEnrolledKeys {
 		pre = "1"
 	}
-	return fmt.Sprintf("%s:1,format=%s,efitype=4m,pre-enrolled-keys=%s", e.Storage, format, pre)
+	parts := []string{fmt.Sprintf("%s:1", e.Storage)}
+	if e.Format != "" {
+		parts = append(parts, "format="+e.Format)
+	}
+	parts = append(parts, "efitype=4m", "pre-enrolled-keys="+pre)
+	return strings.Join(parts, ",")
 }
 
 // CreateVM creates a new VM on the given node. The call submits form-encoded

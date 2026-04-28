@@ -18,19 +18,19 @@ import (
 
 func TestDiskAndNICAndEFIString(t *testing.T) {
 	d := DiskSpec{Interface: "scsi0", Storage: "local-lvm", Size: "64G", Shared: true}
-	assert.Equal(t, "local-lvm:64G,shared=1", d.DiskString())
+	assert.Equal(t, "local-lvm:64,shared=1", d.DiskString())
 
 	d2 := DiskSpec{Interface: "scsi1", Storage: "ssd", Size: "100G", Format: "qcow2"}
-	assert.Equal(t, "ssd:100G,format=qcow2", d2.DiskString())
+	assert.Equal(t, "ssd:100,format=qcow2", d2.DiskString())
 
 	n := NICSpec{Index: 0, Bridge: "vmbr0", MAC: "AA:BB:CC:DD:EE:FF", VLAN: 10, Firewall: true}
 	assert.Equal(t, "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,firewall=1,tag=10", n.NICString())
 
 	n2 := NICSpec{Index: 1, Bridge: "vmbr1", MAC: "auto"}
-	assert.Equal(t, "virtio=auto,bridge=vmbr1", n2.NICString())
+	assert.Equal(t, "virtio,bridge=vmbr1", n2.NICString())
 
 	e := EFIDiskSpec{Storage: "local-lvm", PreEnrolledKeys: true}
-	assert.Equal(t, "local-lvm:1,format=raw,efitype=4m,pre-enrolled-keys=1", e.EFIDiskString())
+	assert.Equal(t, "local-lvm:1,efitype=4m,pre-enrolled-keys=1", e.EFIDiskString())
 }
 
 func TestCreateOptsValidate(t *testing.T) {
@@ -126,9 +126,9 @@ func TestCreateVM_FormFieldsAndTaskPolling(t *testing.T) {
 	assert.Equal(t, "1", body.Get("agent"))
 	assert.Equal(t, "1", body.Get("onboot"))
 	assert.Equal(t, "1", body.Get("protection"))
-	assert.Equal(t, "local-lvm:1,format=raw,efitype=4m,pre-enrolled-keys=0", body.Get("efidisk0"))
-	assert.Equal(t, "local-lvm:64G", body.Get("scsi0"))
-	assert.Equal(t, "virtio=auto,bridge=vmbr0", body.Get("net0"))
+	assert.Equal(t, "local-lvm:1,efitype=4m,pre-enrolled-keys=0", body.Get("efidisk0"))
+	assert.Equal(t, "local-lvm:64", body.Get("scsi0"))
+	assert.Equal(t, "virtio,bridge=vmbr0", body.Get("net0"))
 	assert.Equal(t, "proxmox:iso/oel9.iso,media=cdrom", body.Get("ide2"))
 	assert.Equal(t, "application/x-www-form-urlencoded", f.requests[0].CT)
 }

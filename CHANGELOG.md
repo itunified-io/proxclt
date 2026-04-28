@@ -2,6 +2,27 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.28.6 — 2026-04-28
+
+### fix: CreateVM disk size suffix + EFIDisk format= rejection (#29)
+
+Two more form-encoding bugs surfaced by live `/lab-up --phase B` of ext3 +
+ext4 against proximo:
+
+1. `DiskString` passed `<storage>:64G` literally to Proxmox. Proxmox's
+   qemu-create API expects a bare integer (GiB). Anything with a unit
+   suffix triggers `500 {"data":null}`. Fix: `normalizeSizeGiB` strips
+   `G/GB/GiB`, scales `T/TB/TiB → ×1024`, and downscales `M/MB/MiB → /1024`
+   when divisible.
+
+2. `EFIDiskString` always emitted `format=raw`, which Proxmox rejects on
+   `lvmthin`/`zfspool` storage. Same fix as DiskString in v2026.04.28.5:
+   omit `format=` unless caller sets `EFIDiskSpec.Format`.
+
+Tests in `pkg/proxmox/vm_test.go` updated. Live-verified: VM 2701
+(ext3adm1) and 2702 (ext4adm1) both created and booted from the kickstart
+ISO on proximo.
+
 ## v2026.04.28.5 — 2026-04-28
 
 ### fix: CreateVM form encoding for disk/NIC/tags (#27)
