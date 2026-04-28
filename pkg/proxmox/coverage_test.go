@@ -515,6 +515,20 @@ func TestIsNotFound_ErrorsMap(t *testing.T) {
 	assert.False(t, isNotFound(&APIError{StatusCode: 500, Errors: map[string]string{"k": "ok"}}))
 }
 
+func TestIsNotFound_500NullData(t *testing.T) {
+	// Proxmox quirk: GET /nodes/<n>/qemu/<missing-vmid>/status/current returns
+	// HTTP 500 with body `{"data":null}` instead of 404. parseAPIError stuffs
+	// the raw body into Message when both Errors and Message are empty, so
+	// we must recognize that exact pattern.
+	assert.True(t, isNotFound(&APIError{StatusCode: 500, Message: `{"data":null}`}))
+	assert.True(t, isNotFound(&APIError{StatusCode: 500, Message: `  {"data":null}  `})) // tolerate whitespace
+	// Don't false-positive on a 500 with a real message body.
+	assert.False(t, isNotFound(&APIError{StatusCode: 500, Message: `{"data":{"vmid":9}}`}))
+	assert.False(t, isNotFound(&APIError{StatusCode: 500, Message: `internal error`}))
+	// Don't conflate with 200 + null (success/no-op).
+	assert.False(t, isNotFound(&APIError{StatusCode: 200, Message: `{"data":null}`}))
+}
+
 // --- Boot: ConfigureFirstBoot failure paths ------------------------------
 
 func TestConfigureFirstBoot_AttachIDE2Fails(t *testing.T) {

@@ -2,6 +2,32 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.28.2 — 2026-04-28
+
+### fix: isNotFound recognizes Proxmox's 500+null pattern (#21)
+
+`pkg/proxmox/vm.go:isNotFound` didn't recognize a Proxmox quirk: missing
+`/nodes/<n>/qemu/<vmid>/status/current` returns HTTP 500 with body
+`{"data":null}` instead of 404. As a result, `VMExists` surfaced a generic
+500 error and the `workflow up` (and `vm create / start / stop / delete`)
+preconditions failed for any fresh VMID:
+
+```
+Error: plan: vm-exists check: proxmox api error: status=500 message="{"data":null}"
+```
+
+Fix: when the APIError has StatusCode 500, no Errors map, and Message is
+exactly `{"data":null}` (whitespace tolerated), treat it as not-found.
+Other 500s (real errors) keep their semantic. Tests in
+`pkg/proxmox/coverage_test.go::TestIsNotFound_500NullData` cover the new
+branch + a few false-positive guards.
+
+Caught while running `/lab-up --phase B` for ext3+ext4 in
+itunified-io/infrastructure (plan 034) immediately after v2026.04.28.1
+unblocked the loadEnvManifest path.
+
+Closes #21.
+
 ## v2026.04.28.1 — 2026-04-28
 
 ### fix: kickstart/vm/workflow/boot subcommands resolve $ref envs (#19)

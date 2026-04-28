@@ -380,6 +380,12 @@ func splitTags(s string) []string {
 }
 
 // isNotFound returns true if the error indicates a 404/500 "does not exist".
+//
+// Proxmox is inconsistent: missing VMs/tasks/storage paths come back as a 404
+// with a clear message in some endpoints, but `/nodes/<n>/qemu/<id>/status/current`
+// returns HTTP 500 with body `{"data":null}` instead. We recognize both
+// patterns so VMExists can correctly report `false` for absent IDs (and
+// callers like the workflow vm-exists precondition treat it as "id is free").
 func isNotFound(err error) bool {
 	apiErr, ok := err.(*APIError)
 	if !ok {
@@ -395,6 +401,15 @@ func isNotFound(err error) bool {
 	for _, v := range apiErr.Errors {
 		lv := strings.ToLower(v)
 		if strings.Contains(lv, "does not exist") || strings.Contains(lv, "no such") {
+			return true
+		}
+	}
+	// Proxmox-quirk fallback: 500 + body `{"data":null}` (no errors field, no
+	// message field). parseAPIError stuffs the raw body into Message when both
+	// Errors and Message are empty, so the pattern surfaces here.
+	if apiErr.StatusCode == http.StatusInternalServerError && len(apiErr.Errors) == 0 {
+		trimmed := strings.TrimSpace(apiErr.Message)
+		if trimmed == `{"data":null}` {
 			return true
 		}
 	}
