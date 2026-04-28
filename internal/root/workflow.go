@@ -36,6 +36,7 @@ func newWorkflowCmd() *cobra.Command {
 	var wfDryRun bool
 	var wfMaxConc int
 	var wfContinue bool
+	var wfSkipKickstart bool
 
 	loadCommon := func() (*config.Env, *kickstart.Renderer, *kickstart.ISOBuilder, error) {
 		env, err := loadEnvManifest("")
@@ -59,12 +60,13 @@ func newWorkflowCmd() *cobra.Command {
 			return nil, err
 		}
 		return &workflow.SingleVMWorkflow{
-			Config:   env,
-			NodeName: nodeName,
-			Client:   client,
-			Renderer: rnd,
-			Builder:  builder,
-			DryRun:   wfDryRun,
+			Config:             env,
+			NodeName:           nodeName,
+			Client:             client,
+			Renderer:           rnd,
+			Builder:            builder,
+			DryRun:             wfDryRun,
+			SkipKickstartBuild: wfSkipKickstart,
 		}, nil
 	}
 
@@ -79,6 +81,7 @@ func newWorkflowCmd() *cobra.Command {
 			m.MaxConcurrency = wfMaxConc
 		}
 		m.ContinueOnError = wfContinue
+		m.SkipKickstartBuild = wfSkipKickstart
 		return m, nil
 	}
 
@@ -263,6 +266,11 @@ func newWorkflowCmd() *cobra.Command {
 	for _, sub := range []*cobra.Command{planCmd, upCmd, downCmd, verifyCmd} {
 		sub.Flags().StringVar(&wfNode, "node", "", "node name from env manifest (single-node override)")
 		sub.Flags().StringVar(&wfBootloader, "bootloader-dir", "", "path to bootloader files (isolinux.bin, vmlinuz, initrd.img)")
+	}
+	for _, sub := range []*cobra.Command{planCmd, upCmd} {
+		sub.Flags().BoolVar(&wfSkipKickstart, "skip-kickstart-build", false,
+			"skip render/build/upload of kickstart ISO; assume operator pre-uploaded "+
+				"<kickstart_storage>:iso/<node>_kickstart.iso (verified at apply time)")
 	}
 	upCmd.Flags().BoolVar(&wfDryRun, "dry-run", false, "print actions without executing")
 	upCmd.Flags().IntVar(&wfMaxConc, "max-concurrency", 0, "cap concurrent per-node Apply goroutines (0=default)")

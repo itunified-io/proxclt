@@ -2,6 +2,37 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.28.3 — 2026-04-28
+
+### feat: --skip-kickstart-build flag (#23)
+
+Adds `--skip-kickstart-build` to `workflow plan/up` and `vm create`. When
+set, the workflow drops the `render-kickstart`, `build-iso`, and
+`upload-iso` steps (which require a bootloader-dir + xorriso) and instead
+runs:
+
+1. `verify-kickstart-iso` — checks `<kickstart_storage>:iso/<node>_kickstart.iso` is present
+2. `create-vm`
+3. `start-vm`
+
+Use this when the operator built and uploaded the kickstart ISO out-of-band
+(e.g. an OEMDRV-labeled ISO that Anaconda auto-discovers, or a kickstart ISO
+maintained by a separate pipeline). Avoids the bootloader-dir requirement for
+operators who don't need the proxctl-built remastered install ISO.
+
+Implementation:
+- `SingleVMWorkflow.SkipKickstartBuild bool` (and `MultiNodeWorkflow.SkipKickstartBuild`)
+- New `Client.StorageContentExists(ctx, node, storage, volid)` for the verify step
+- New apply branch `verify-kickstart-iso`
+- Plan output reflects the slimmer change set
+- Tests in `pkg/workflow/single_vm_test.go::TestPlan_SkipKickstartBuild`
+
+Caught while running `/lab-up --phase B` for ext3+ext4 in
+itunified-io/infrastructure (plan 034) — the third gate after
+v2026.04.28.1 (#19) and v2026.04.28.2 (#21).
+
+Closes #23.
+
 ## v2026.04.28.2 — 2026-04-28
 
 ### fix: isNotFound recognizes Proxmox's 500+null pattern (#21)

@@ -102,6 +102,39 @@ func TestPlan(t *testing.T) {
 	}
 }
 
+func TestPlan_SkipKickstartBuild(t *testing.T) {
+	// With SkipKickstartBuild=true, the plan should drop render/build/upload
+	// and instead include a verify-kickstart-iso step, then create-vm + start-vm.
+	calls := []string{}
+	srv := mockPVE(t, &calls)
+	defer srv.Close()
+	client, err := proxmox.NewClient(proxmox.ClientOpts{
+		Endpoint: srv.URL, TokenID: "t@pve!k", TokenSecret: "secret",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := &SingleVMWorkflow{
+		Config:             testEnv(),
+		NodeName:           "web01",
+		Client:             client,
+		SkipKickstartBuild: true,
+	}
+	changes, err := w.Plan(context.Background())
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	wantKinds := []string{"verify-kickstart-iso", "create-vm", "start-vm"}
+	if len(changes) != len(wantKinds) {
+		t.Fatalf("want %d changes got %d: %+v", len(wantKinds), len(changes), changes)
+	}
+	for i, k := range wantKinds {
+		if changes[i].Kind != k {
+			t.Errorf("change[%d] kind: want %q got %q", i, k, changes[i].Kind)
+		}
+	}
+}
+
 func TestPlanDryRunApply(t *testing.T) {
 	calls := []string{}
 	srv := mockPVE(t, &calls)

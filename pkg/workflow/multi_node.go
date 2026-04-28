@@ -36,6 +36,9 @@ type MultiNodeWorkflow struct {
 	// ISOUploadMu serializes ISO uploads across nodes. If nil, one is allocated
 	// internally.
 	ISOUploadMu *sync.Mutex
+	// SkipKickstartBuild propagates to every per-node SingleVMWorkflow. See
+	// SingleVMWorkflow.SkipKickstartBuild.
+	SkipKickstartBuild bool
 }
 
 // NewMultiNodeWorkflow is a small factory that fills sensible defaults.
@@ -80,13 +83,14 @@ func (m *MultiNodeWorkflow) nodeNames() ([]string, error) {
 // including the cross-node ISO-upload mutex.
 func (m *MultiNodeWorkflow) perNode(name string) *SingleVMWorkflow {
 	return &SingleVMWorkflow{
-		Config:   m.Config,
-		NodeName: name,
-		Client:   m.Client,
-		Renderer: m.Renderer,
-		Builder:  m.Builder,
-		DryRun:   m.DryRun,
-		UploadMu: m.isoMu(),
+		Config:             m.Config,
+		NodeName:           name,
+		Client:             m.Client,
+		Renderer:           m.Renderer,
+		Builder:            m.Builder,
+		DryRun:             m.DryRun,
+		UploadMu:           m.isoMu(),
+		SkipKickstartBuild: m.SkipKickstartBuild,
 	}
 }
 

@@ -45,6 +45,31 @@ func (c *Client) ListStorage(ctx context.Context, node string) ([]Storage, error
 	return out, nil
 }
 
+// StorageContentExists returns true if a volume with the given volid is present
+// in the storage's content listing. Used by workflow's `verify-kickstart-iso`
+// step (skip-kickstart-build mode) to assert the operator-uploaded ISO is in
+// place before VM create.
+//
+// volid is the Proxmox-style identifier `<storage>:<typedir>/<filename>`,
+// e.g. `proxmox:iso/ext3adm1_kickstart.iso`.
+func (c *Client) StorageContentExists(ctx context.Context, node, storage, volid string) (bool, error) {
+	var raws []struct {
+		VolID  string `json:"volid"`
+		Format string `json:"format"`
+		Size   int64  `json:"size"`
+	}
+	path := fmt.Sprintf("/nodes/%s/storage/%s/content", node, storage)
+	if err := c.Do(ctx, http.MethodGet, path, nil, &raws); err != nil {
+		return false, err
+	}
+	for _, r := range raws {
+		if r.VolID == volid {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // UploadISO uploads the file at localPath to the given storage as an ISO.
 // When remoteName is empty, the local file's basename is used.
 //

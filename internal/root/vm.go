@@ -23,32 +23,40 @@ func newVMCmd() *cobra.Command {
 	var vmDeletePurge bool
 
 	c.AddCommand(
-		&cobra.Command{
-			Use:   "create NAME",
-			Short: "Create a VM from env spec",
-			Args:  cobra.ExactArgs(1),
-			RunE: func(cmd *cobra.Command, args []string) error {
-				env, err := loadEnvManifest("")
-				if err != nil {
-					return err
-				}
-				client, err := loadProxmoxClient()
-				if err != nil {
-					return err
-				}
-				rnd, err := kickstart.NewRenderer()
-				if err != nil {
-					return err
-				}
-				w := &workflow.SingleVMWorkflow{
-					Config:   env,
-					NodeName: args[0],
-					Client:   client,
-					Renderer: rnd,
-				}
-				return w.Up(context.Background())
-			},
-		},
+		func() *cobra.Command {
+			var skipKickstart bool
+			cc := &cobra.Command{
+				Use:   "create NAME",
+				Short: "Create a VM from env spec",
+				Args:  cobra.ExactArgs(1),
+				RunE: func(cmd *cobra.Command, args []string) error {
+					env, err := loadEnvManifest("")
+					if err != nil {
+						return err
+					}
+					client, err := loadProxmoxClient()
+					if err != nil {
+						return err
+					}
+					rnd, err := kickstart.NewRenderer()
+					if err != nil {
+						return err
+					}
+					w := &workflow.SingleVMWorkflow{
+						Config:             env,
+						NodeName:           args[0],
+						Client:             client,
+						Renderer:           rnd,
+						SkipKickstartBuild: skipKickstart,
+					}
+					return w.Up(context.Background())
+				},
+			}
+			cc.Flags().BoolVar(&skipKickstart, "skip-kickstart-build", false,
+				"skip render/build/upload of kickstart ISO; assume operator pre-uploaded "+
+					"<kickstart_storage>:iso/<NAME>_kickstart.iso (verified at apply time)")
+			return cc
+		}(),
 		&cobra.Command{
 			Use:   "start NAME",
 			Short: "Start a VM",

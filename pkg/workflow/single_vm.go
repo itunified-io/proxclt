@@ -33,6 +33,14 @@ type SingleVMWorkflow struct {
 	// UploadMu serializes the upload-iso step across callers that share a
 	// Proxmox storage endpoint (multi-node Apply). Optional.
 	UploadMu *sync.Mutex
+	// SkipKickstartBuild — when true, the workflow skips the
+	// render-kickstart, build-iso, and upload-iso steps and goes straight
+	// to create-vm + start-vm. The kickstart ISO MUST already be present at
+	// `iso.kickstart_storage:<expected-volid>` (verified at plan time).
+	// Use this when the operator built and uploaded the kickstart ISO
+	// out-of-band (e.g. an OEMDRV-labeled ISO), or when iterating on VM
+	// hardware config without re-rendering kickstart. See #23.
+	SkipKickstartBuild bool
 }
 
 // resolved pulls commonly-accessed nested structures from the env.
@@ -89,19 +97,32 @@ func (w *SingleVMWorkflow) Plan(ctx context.Context) ([]Change, error) {
 		}
 	}
 
-	changes = append(changes,
-		Change{Kind: "render-kickstart", Target: w.NodeName,
-			Description: fmt.Sprintf("render %s kickstart for %s", safeDistro(r.ks), w.NodeName)},
-		Change{Kind: "build-iso", Target: w.NodeName,
-			Description: fmt.Sprintf("build kickstart ISO for %s", w.NodeName)},
-	)
+	if !w.SkipKickstartBuild {
+		changes = append(changes,
+			Change{Kind: "render-kickstart", Target: w.NodeName,
+				Description: fmt.Sprintf("render %s kickstart for %s", safeDistro(r.ks), w.NodeName)},
+			Change{Kind: "build-iso", Target: w.NodeName,
+				Description: fmt.Sprintf("build kickstart ISO for %s", w.NodeName)},
+		)
 
-	if r.iso != nil && r.iso.KickstartStorage != "" {
-		changes = append(changes, Change{
-			Kind:        "upload-iso",
-			Target:      r.iso.KickstartStorage,
-			Description: fmt.Sprintf("upload kickstart ISO to storage %s on node %s", r.iso.KickstartStorage, r.node.Proxmox.NodeName),
-		})
+		if r.iso != nil && r.iso.KickstartStorage != "" {
+			changes = append(changes, Change{
+				Kind:        "upload-iso",
+				Target:      r.iso.KickstartStorage,
+				Description: fmt.Sprintf("upload kickstart ISO to storage %s on node %s", r.iso.KickstartStorage, r.node.Proxmox.NodeName),
+			})
+		}
+	} else {
+		// Pre-condition: kickstart ISO must already be present on Proxmox storage.
+		// Surface in the plan so operators see what's being assumed; verified
+		// at apply time via Client.StorageContentExists if Client is available.
+		if r.iso != nil && r.iso.KickstartStorage != "" {
+			changes = append(changes, Change{
+				Kind:        "verify-kickstart-iso",
+				Target:      r.iso.KickstartStorage,
+				Description: fmt.Sprintf("verify kickstart ISO already uploaded to %s on node %s (skip-kickstart-build)", r.iso.KickstartStorage, r.node.Proxmox.NodeName),
+			})
+		}
 	}
 
 	changes = append(changes,
@@ -171,6 +192,21 @@ func (w *SingleVMWorkflow) Apply(ctx context.Context, changes []Change) error {
 			}
 			if err != nil {
 				return fmt.Errorf("upload-iso: %w", err)
+			}
+		case "verify-kickstart-iso":
+			if w.Client == nil {
+				return errors.New("apply: Client not set")
+			}
+			if r.iso == nil || r.iso.KickstartStorage == "" {
+				return errors.New("apply: iso.kickstart_storage not configured (cannot verify pre-uploaded kickstart ISO)")
+			}
+			expectedVolID := fmt.Sprintf("%s:iso/%s_kickstart.iso", r.iso.KickstartStorage, w.NodeName)
+			present, err := w.Client.StorageContentExists(ctx, r.node.Proxmox.NodeName, r.iso.KickstartStorage, expectedVolID)
+			if err != nil {
+				return fmt.Errorf("verify-kickstart-iso: %w", err)
+			}
+			if !present {
+				return fmt.Errorf("verify-kickstart-iso: %s not present on %s — upload it first or omit --skip-kickstart-build", expectedVolID, r.node.Proxmox.NodeName)
 			}
 		case "create-vm":
 			if w.Client == nil {
