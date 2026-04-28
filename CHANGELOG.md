@@ -2,6 +2,34 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.28.4 — 2026-04-28
+
+### fix: buildCreateOpts resolves storage_class → backend (#25)
+
+`pkg/workflow/single_vm.go:buildCreateOpts` was passing the logical
+`Disk.StorageClass` name (e.g. `root`, `u01`, `asm`) straight into the
+Proxmox `scsi<N>=<storage>:<size>` form value, treating it as if it were a
+Proxmox storage backend. Result: HTTP 500 + `{"data":null}` from the create
+endpoint because Proxmox has no storage named "root".
+
+Fix: resolve `StorageClass` against `env.Spec.StorageClasses.Resolved()` to
+get the actual backend (`root → local-lvm`, `asm → nvme`, etc.). Propagate
+`StorageClass.Shared` to `DiskSpec.Shared`. EFIDisk uses the same resolver.
+Literal `Disk.Storage` (when set) still takes precedence — per-disk
+escape hatch.
+
+Tests in `pkg/workflow/single_vm_test.go`:
+- `TestBuildCreateOpts_OVMF_StorageClass` — flipped from asserting buggy
+  behavior to verifying resolution.
+- `TestBuildCreateOpts_StorageClass_PropagatesShared` — new.
+- `TestBuildCreateOpts_StorageClass_LiteralStorageWins` — new.
+
+Caught while running `/lab-up --phase B` for ext3+ext4 in
+itunified-io/infrastructure (plan 034) — fourth gate today after
+v2026.04.28.1 (#19), .2 (#21), .3 (#23).
+
+Closes #25.
+
 ## v2026.04.28.3 — 2026-04-28
 
 ### feat: --skip-kickstart-build flag (#23)

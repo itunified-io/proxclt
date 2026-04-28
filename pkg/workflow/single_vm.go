@@ -312,14 +312,23 @@ func (w *SingleVMWorkflow) Down(ctx context.Context, force bool) error {
 }
 
 // buildCreateOpts maps the env Node into a proxmox.CreateOpts.
+//
+// Storage resolution: env Disk.StorageClass is a logical name (e.g. "root",
+// "u01", "asm") that must be resolved against the env's StorageClasses
+// catalogue (loaded from `_contexts/<ctx>/storage-classes.yaml`) to the
+// actual Proxmox backend (e.g. "local-lvm", "nvme"). Without resolution we
+// would POST e.g. `scsi0=root:64` to Proxmox and get HTTP 500. See #25.
+//
+// Disk.Storage (literal Proxmox storage name) takes precedence over
+// Disk.StorageClass when both are set, so per-stack overrides work.
 func buildCreateOpts(env *config.Env, nodeName string, node *config.Node, r *resolved) proxmox.CreateOpts {
 	opts := proxmox.CreateOpts{
-		Node:    node.Proxmox.NodeName,
-		VMID:    node.Proxmox.VMID,
-		Name:    nodeName,
-		Tags:    node.Tags,
-		OSType:  "l26",
-		SCSIHW:  "virtio-scsi-single",
+		Node:   node.Proxmox.NodeName,
+		VMID:   node.Proxmox.VMID,
+		Name:   nodeName,
+		Tags:   node.Tags,
+		OSType: "l26",
+		SCSIHW: "virtio-scsi-single",
 	}
 	if node.Resources != nil {
 		opts.Memory = node.Resources.Memory
@@ -329,24 +338,54 @@ func buildCreateOpts(env *config.Env, nodeName string, node *config.Node, r *res
 		opts.BIOS = node.Resources.BIOS
 		opts.Machine = node.Resources.Machine
 	}
+
+	// Resolve the StorageClasses catalogue once.
+	var sc *config.StorageClasses
+	if env != nil {
+		sc = env.Spec.StorageClasses.Resolved()
+	}
+
+	resolveStorage := func(d config.Disk) (backend string, shared bool) {
+		// Explicit literal storage wins (per-stack escape hatch).
+		if d.Storage != "" {
+			return d.Storage, d.Shared
+		}
+		// Map storage_class → backend via the catalogue.
+		if d.StorageClass != "" && sc != nil {
+			if cls, ok := sc.Classes[d.StorageClass]; ok {
+				return cls.Backend, cls.Shared || d.Shared
+			}
+		}
+		// Last-resort fallback so VM creation doesn't 500 on a missing class.
+		// validateDiskStorageRefs already caught unresolved classes during Load,
+		// so reaching this branch means env validation was bypassed somehow.
+		return "local-lvm", d.Shared
+	}
+
 	if strings.EqualFold(opts.BIOS, "ovmf") {
+		efiBackend := "local-lvm"
+		if len(node.Disks) > 0 {
+			b, _ := resolveStorage(node.Disks[0])
+			efiBackend = firstNonEmpty(b, "local-lvm")
+		}
 		opts.EFIDisk = &proxmox.EFIDiskSpec{
-			Storage:         firstNonEmpty(storageForDisk(node.Disks), "local-lvm"),
+			Storage:         efiBackend,
 			Format:          "raw",
 			PreEnrolledKeys: false,
 		}
 	}
-	// Disks: map config.Disk → proxmox.DiskSpec
+	// Disks: map config.Disk → proxmox.DiskSpec (with storage_class resolved).
 	for i, d := range node.Disks {
 		iface := d.Interface
 		if iface == "" {
 			iface = fmt.Sprintf("scsi%d", i)
 		}
+		backend, shared := resolveStorage(d)
 		opts.Disks = append(opts.Disks, proxmox.DiskSpec{
 			Interface: iface,
-			Storage:   firstNonEmpty(d.Storage, d.StorageClass, "local-lvm"),
+			Storage:   backend,
 			Size:      d.Size,
-			Shared:    d.Shared,
+			Shared:    shared,
 		})
 	}
 	// NICs
@@ -362,7 +401,6 @@ func buildCreateOpts(env *config.Env, nodeName string, node *config.Node, r *res
 	if r != nil && r.iso != nil && r.iso.Image != "" && r.iso.Storage != "" {
 		opts.ISOFile = fmt.Sprintf("%s:iso/%s", r.iso.Storage, r.iso.Image)
 	}
-	_ = env
 	return opts
 }
 

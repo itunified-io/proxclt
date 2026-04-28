@@ -719,13 +719,21 @@ func TestUp_VerifyWarns(t *testing.T) {
 }
 
 func TestBuildCreateOpts_OVMF_StorageClass(t *testing.T) {
+	// Post-#25: storage_class is resolved against env.Spec.StorageClasses,
+	// not passed through as a literal Proxmox storage name.
 	env := testEnv()
 	node := env.Spec.Hypervisor.Inline.Nodes["web01"]
 	node.Resources.BIOS = "ovmf"
-	// Disk uses StorageClass fallback (no direct Storage set).
 	node.Disks[0].Storage = ""
 	node.Disks[0].StorageClass = "fast-ssd"
 	env.Spec.Hypervisor.Inline.Nodes["web01"] = node
+	// Provide a StorageClasses catalogue mapping fast-ssd → nvme-pool.
+	env.Spec.StorageClasses.Inline = &config.StorageClasses{
+		Kind: "StorageClasses",
+		Classes: map[string]config.StorageClass{
+			"fast-ssd": {Backend: "nvme-pool"},
+		},
+	}
 	hyp := env.Spec.Hypervisor.Resolved()
 	n := hyp.Nodes["web01"]
 	r := &resolved{hyp: hyp, node: n, ks: hyp.Kickstart, iso: hyp.ISO}
@@ -733,8 +741,60 @@ func TestBuildCreateOpts_OVMF_StorageClass(t *testing.T) {
 	if opts.EFIDisk == nil {
 		t.Errorf("expected EFIDisk for ovmf")
 	}
-	if opts.Disks[0].Storage != "fast-ssd" {
-		t.Errorf("want fast-ssd got %q", opts.Disks[0].Storage)
+	if opts.Disks[0].Storage != "nvme-pool" {
+		t.Errorf("storage_class not resolved: want nvme-pool got %q", opts.Disks[0].Storage)
+	}
+	if opts.EFIDisk.Storage != "nvme-pool" {
+		t.Errorf("EFIDisk.Storage not resolved from StorageClasses: want nvme-pool got %q", opts.EFIDisk.Storage)
+	}
+}
+
+func TestBuildCreateOpts_StorageClass_PropagatesShared(t *testing.T) {
+	// A storage_class with shared:true on the catalogue side should propagate
+	// to DiskSpec.Shared (proxmox API needs `shared=1` for shared storages).
+	env := testEnv()
+	node := env.Spec.Hypervisor.Inline.Nodes["web01"]
+	node.Disks[0].Storage = ""
+	node.Disks[0].StorageClass = "san-shared"
+	env.Spec.Hypervisor.Inline.Nodes["web01"] = node
+	env.Spec.StorageClasses.Inline = &config.StorageClasses{
+		Kind: "StorageClasses",
+		Classes: map[string]config.StorageClass{
+			"san-shared": {Backend: "iscsi-prod", Shared: true},
+		},
+	}
+	hyp := env.Spec.Hypervisor.Resolved()
+	n := hyp.Nodes["web01"]
+	r := &resolved{hyp: hyp, node: n}
+	opts := buildCreateOpts(env, "web01", &n, r)
+	if opts.Disks[0].Storage != "iscsi-prod" {
+		t.Errorf("backend: want iscsi-prod got %q", opts.Disks[0].Storage)
+	}
+	if !opts.Disks[0].Shared {
+		t.Errorf("Shared=true not propagated from StorageClass.Shared")
+	}
+}
+
+func TestBuildCreateOpts_StorageClass_LiteralStorageWins(t *testing.T) {
+	// When both Disk.Storage (literal) and Disk.StorageClass are set, the
+	// literal Storage wins — operators can override the catalogue per-disk.
+	env := testEnv()
+	node := env.Spec.Hypervisor.Inline.Nodes["web01"]
+	node.Disks[0].Storage = "override-store"
+	node.Disks[0].StorageClass = "fast-ssd"
+	env.Spec.Hypervisor.Inline.Nodes["web01"] = node
+	env.Spec.StorageClasses.Inline = &config.StorageClasses{
+		Kind: "StorageClasses",
+		Classes: map[string]config.StorageClass{
+			"fast-ssd": {Backend: "nvme-pool"},
+		},
+	}
+	hyp := env.Spec.Hypervisor.Resolved()
+	n := hyp.Nodes["web01"]
+	r := &resolved{hyp: hyp, node: n}
+	opts := buildCreateOpts(env, "web01", &n, r)
+	if opts.Disks[0].Storage != "override-store" {
+		t.Errorf("literal Storage should win: want override-store got %q", opts.Disks[0].Storage)
 	}
 }
 
