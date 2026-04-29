@@ -2,6 +2,25 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.28.10 — 2026-04-29
+
+### fix: nm_keyfile detects runtime interface name (#37)
+
+v2026.04.28.9 wrote NM keyfiles using the manifest's NIC name (e.g.
+`ens18`). On the installed OEL9 system the device showed up as
+`enp6s18` — Anaconda's install env and the running system disagreed
+about predictable interface naming. Result: keyfile bound to a name
+that didn't exist; NM auto-created a DHCP profile for the real device.
+
+Fix: `nm_keyfile.tmpl` now scans `/sys/class/net` at install time, picks
+the first physical Ethernet device, and writes the keyfile keyed by both
+that runtime device name AND its MAC. Auto-DHCP profiles created by NM
+are removed first to prevent a race.
+
+Live-caught: ext3adm1/ext4adm1 had keyfiles for `ens18`, but the kernel
+exposed `enp6s18` to NM, so the static config was bound to a phantom
+device.
+
 ## v2026.04.28.9 — 2026-04-29
 
 ### fix: NetworkManager keyfile for static NIC config on OEL8/OEL9 (#35)
