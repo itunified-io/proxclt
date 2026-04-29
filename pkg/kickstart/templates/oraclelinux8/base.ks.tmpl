@@ -25,7 +25,7 @@ services --enabled="chronyd,sshd" --disabled="postfix"
 user --name={{ $u.Name }}{{ if $u.Wheel }} --groups=wheel{{ end }}
 {{- end }}
 
-reboot
+reboot --eject
 
 %packages
 @base

@@ -2,6 +2,22 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.28.8 — 2026-04-29
+
+### fix: kickstart `reboot --eject` to break install loop (#33)
+
+OEL8/OEL9 base.ks templates emitted plain `reboot`. After Anaconda finished
+the install and rebooted, the install ISO stayed attached on `ide2`. With
+SeaBIOS boot order `scsi0;ide3;ide2`, any time scsi0 was slow to handshake
+or the freshly-installed bootloader hadn't been activated yet, BIOS fell
+through to ide2 and re-launched Anaconda — install loop, indefinitely.
+
+Fix: emit `reboot --eject` so Anaconda pops the install ISO on the way out;
+the next boot has nothing on ide2 to fall through to.
+
+Caught while running `/lab-up --phase B` for ext3+ext4 — VMs cycled through
+the install screen multiple times before being diagnosed.
+
 ## v2026.04.28.7 — 2026-04-29
 
 ### fix: workflow up never attached kickstart ISO to VM (#31)

@@ -38,8 +38,11 @@ services --enabled="chronyd,sshd"
 user --name={{ $u.Name }}{{ if $u.Wheel }} --groups=wheel{{ end }}
 {{- end }}
 
-# Reboot after install
-reboot
+# Reboot after install. --eject pops the CDROM tray on the install ISO so
+# SeaBIOS doesn't fall through to it on next boot and re-enter Anaconda —
+# without --eject, ide2 stays attached after install and BIOS boot fallthrough
+# (when scsi0 boot is briefly delayed) hits the install ISO → install loop.
+reboot --eject
 
 %packages
 @^minimal-environment
