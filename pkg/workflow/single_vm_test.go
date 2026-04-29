@@ -91,7 +91,7 @@ func TestPlan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Plan: %v", err)
 	}
-	wantKinds := []string{"render-kickstart", "build-iso", "upload-iso", "create-vm", "start-vm"}
+	wantKinds := []string{"render-kickstart", "build-iso", "upload-iso", "create-vm", "attach-kickstart-iso", "start-vm"}
 	if len(changes) != len(wantKinds) {
 		t.Fatalf("want %d changes got %d: %+v", len(wantKinds), len(changes), changes)
 	}
@@ -124,7 +124,7 @@ func TestPlan_SkipKickstartBuild(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Plan: %v", err)
 	}
-	wantKinds := []string{"verify-kickstart-iso", "create-vm", "start-vm"}
+	wantKinds := []string{"verify-kickstart-iso", "create-vm", "attach-kickstart-iso", "start-vm"}
 	if len(changes) != len(wantKinds) {
 		t.Fatalf("want %d changes got %d: %+v", len(wantKinds), len(changes), changes)
 	}

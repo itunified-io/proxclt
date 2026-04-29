@@ -135,6 +135,16 @@ func (w *SingleVMWorkflow) Plan(ctx context.Context) ([]Change, error) {
 				"nics":   len(r.node.NICs),
 			},
 		},
+	)
+	if r.iso != nil && r.iso.KickstartStorage != "" {
+		changes = append(changes, Change{
+			Kind:   "attach-kickstart-iso",
+			Target: fmt.Sprintf("%s/%d", r.node.Proxmox.NodeName, r.node.Proxmox.VMID),
+			Description: fmt.Sprintf("attach kickstart ISO to ide3 + set boot order (scsi0;ide3;ide2) on VM %d",
+				r.node.Proxmox.VMID),
+		})
+	}
+	changes = append(changes,
 		Change{Kind: "start-vm", Target: fmt.Sprintf("%s/%d", r.node.Proxmox.NodeName, r.node.Proxmox.VMID),
 			Description: fmt.Sprintf("start VM %d", r.node.Proxmox.VMID)},
 	)
@@ -215,6 +225,20 @@ func (w *SingleVMWorkflow) Apply(ctx context.Context, changes []Change) error {
 			opts := buildCreateOpts(w.Config, w.NodeName, &r.node, r)
 			if err := w.Client.CreateVM(ctx, opts); err != nil {
 				return fmt.Errorf("create-vm: %w", err)
+			}
+		case "attach-kickstart-iso":
+			if w.Client == nil {
+				return errors.New("apply: Client not set")
+			}
+			if r.iso == nil || r.iso.KickstartStorage == "" {
+				return errors.New("apply: iso.kickstart_storage not configured (cannot attach kickstart ISO)")
+			}
+			ksVolID := fmt.Sprintf("%s:iso/%s_kickstart.iso", r.iso.KickstartStorage, w.NodeName)
+			if err := w.Client.AttachISOAsCDROM(ctx, r.node.Proxmox.NodeName, r.node.Proxmox.VMID, "ide3", ksVolID); err != nil {
+				return fmt.Errorf("attach-kickstart-iso: %w", err)
+			}
+			if err := w.Client.SetBootOrder(ctx, r.node.Proxmox.NodeName, r.node.Proxmox.VMID, "scsi0;ide3;ide2"); err != nil {
+				return fmt.Errorf("attach-kickstart-iso: set boot order: %w", err)
 			}
 		case "start-vm":
 			if w.Client == nil {

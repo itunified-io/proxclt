@@ -2,6 +2,38 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.28.7 — 2026-04-29
+
+### fix: workflow up never attached kickstart ISO to VM (#31)
+
+The single-VM workflow `apply` phase rendered/built/uploaded the kickstart
+ISO to Proxmox storage but never attached it to the VM. The `create-vm`
+step only attached the install ISO (ide2). With no OEMDRV-labeled CDROM
+discoverable, Anaconda fell back to interactive mode and hung at the
+language-select screen forever.
+
+This affected BOTH the normal flow and `--skip-kickstart-build`. Symptom:
+VMs run for hours with no install progress, no SSH, no ping; VM config
+shows `boot=order=scsi0;ide2;net0` (default) and only `ide2`, no `ide3`.
+
+`pkg/proxmox/boot.go` already shipped `AttachISOAsCDROM` and `SetBootOrder`
+(plus a higher-level `ConfigureFirstBoot`) — they were just never wired
+into the workflow.
+
+Fix: new `attach-kickstart-iso` Change step inserted between `create-vm`
+and `start-vm` in `Plan()`. `Apply()` calls
+`AttachISOAsCDROM(node, vmid, "ide3", <ks-volid>)` followed by
+`SetBootOrder(node, vmid, "scsi0;ide3;ide2")`. Step is conditional on
+`iso.kickstart_storage` being configured (same gate as upload-iso /
+verify-kickstart-iso).
+
+Tests: `TestPlan` and `TestPlan_SkipKickstartBuild` updated for the new
+6/4-step plans (was 5/3).
+
+Caught while running `/lab-up --phase B` for ext3+ext4 — VMs ran 12+
+hours with no progress until the workaround (manual ide3 attach + boot
+reorder + restart) was applied.
+
 ## v2026.04.28.6 — 2026-04-28
 
 ### fix: CreateVM disk size suffix + EFIDisk format= rejection (#29)
