@@ -1,45 +1,98 @@
 {{- /*
   nm_keyfile — emits a %post that writes a NetworkManager keyfile per
-  static NIC. This is needed on OEL9/RHEL9 where NM no longer picks up
-  legacy /etc/sysconfig/network-scripts/ifcfg-* files emitted by
-  Anaconda's `network --bootproto=static` directive. Without a keyfile
-  in /etc/NetworkManager/system-connections/, NM auto-creates a default
-  DHCP profile on first boot and the static config is silently ignored.
+  static NIC, dynamically detecting the actual interface name on the
+  installed system (which can differ from the install-env name — e.g.
+  ens18 in install env, enp6s18 on running OEL9).
 
-  We re-do the work in %post so the installed system reliably comes up
-  on the configured static IP. ifcfg files (if any) are removed to
-  prevent duplicate-profile races.
+  Why this is needed:
+    1. Anaconda's `network --bootproto=static` writes legacy ifcfg files
+       that OEL9 NetworkManager (keyfile-only) silently ignores → installed
+       system comes up on auto-DHCP regardless of what kickstart said.
+    2. The interface name in the manifest (or install env) doesn't always
+       match the runtime name. Predictable network interface names are
+       derived from PCI slot location, which can shift between Anaconda
+       and post-install boot. We enumerate /sys/class/net at install time
+       and key the connection by MAC + interface-name pair.
+
+  Strategy:
+    - Find the first physical Ethernet (non-lo, non-virtual).
+    - Read its MAC.
+    - Remove auto-generated DHCP profiles for that device (NM creates one
+      on first ifup if no keyfile exists; we want the static profile to
+      win unconditionally).
+    - Write a manual-IPv4 keyfile bound by MAC AND interface-name (either
+      will match; MAC stays consistent across renames).
+
+  This template renders per-NIC entries from the manifest BUT applies the
+  first manifest static NIC's IP config to the first physical Ethernet
+  detected at install time. Multi-NIC hosts need a richer match (MAC
+  ordering or explicit MAC in manifest) — out of scope for this fix.
 */ -}}
 {{- define "nm_keyfile" -}}
-{{- $hasStatic := false -}}
-{{- range $nic := .Node.NICs }}{{- if and $nic.IPv4 (eq $nic.Bootproto "static") }}{{- $hasStatic = true }}{{- end }}{{- end }}
-{{- if $hasStatic }}
-# NetworkManager keyfiles for static NICs (works around Anaconda
-# writing legacy ifcfg-* files that OEL9 NetworkManager ignores).
+{{- $static := false -}}
+{{- $ip := "" -}}
+{{- $prefix := "" -}}
+{{- $gw := "" -}}
+{{- $dns := "" -}}
+{{- range $nic := .Node.NICs }}
+{{- if and (not $static) $nic.IPv4 (eq $nic.Bootproto "static") }}
+{{- $static = true -}}
+{{- $ip = cidrIP $nic.IPv4.Address -}}
+{{- $prefix = cidrPrefix $nic.IPv4.Address -}}
+{{- if $nic.IPv4.Gateway }}{{- $gw = $nic.IPv4.Gateway -}}{{- end -}}
+{{- if $nic.IPv4.DNS }}{{- $dns = join ";" $nic.IPv4.DNS -}}{{- end -}}
+{{- end }}
+{{- end }}
+{{- if $static }}
+# Pin static IPv4 to the first physical Ethernet at install time.
+# Anaconda writes legacy ifcfg-* files that OEL9 NetworkManager ignores;
+# we write a proper keyfile + remove any DHCP profile NM auto-created.
 %post --erroronfail
 set -e
 mkdir -p /etc/NetworkManager/system-connections
-{{- range $nic := .Node.NICs }}
-{{- if and $nic.IPv4 (eq $nic.Bootproto "static") }}
-# Remove any stale ifcfg / nmconnection for {{ $nic.NameField }} so we own the profile.
-rm -f /etc/sysconfig/network-scripts/ifcfg-{{ $nic.NameField }} || true
-rm -f /etc/NetworkManager/system-connections/{{ $nic.NameField }}.nmconnection || true
-rm -f "/etc/NetworkManager/system-connections/Wired connection 1.nmconnection" || true
-cat > /etc/NetworkManager/system-connections/{{ $nic.NameField }}.nmconnection <<'NMEOF'
+
+DEV=""
+for n in /sys/class/net/*; do
+  name=$(basename "$n")
+  case "$name" in
+    lo|virbr*|docker*|veth*|tun*|tap*) continue ;;
+  esac
+  if [ -f "$n/device/uevent" ] || [ -d "$n/device" ]; then
+    DEV="$name"
+    break
+  fi
+done
+if [ -z "$DEV" ]; then
+  echo "nm_keyfile: no physical ethernet device detected" >&2
+  exit 1
+fi
+
+MAC=$(cat /sys/class/net/$DEV/address 2>/dev/null || echo "")
+
+# Wipe legacy ifcfg + any pre-existing keyfile for this dev.
+rm -f /etc/sysconfig/network-scripts/ifcfg-$DEV || true
+rm -f /etc/NetworkManager/system-connections/$DEV.nmconnection || true
+# Wipe NM default-generated profiles (e.g. "Wired connection 1") that
+# would create a DHCP race on first boot.
+find /etc/NetworkManager/system-connections -maxdepth 1 -type f -name '*.nmconnection' -print0 \
+  | xargs -0 -r -I{} sh -c 'grep -l "^method=auto" "{}" 2>/dev/null && rm -f "{}"' || true
+
+cat > /etc/NetworkManager/system-connections/$DEV.nmconnection <<NMEOF
 [connection]
-id={{ $nic.NameField }}
+id=$DEV
 type=ethernet
-interface-name={{ $nic.NameField }}
+interface-name=$DEV
 autoconnect=true
 autoconnect-priority=100
 
 [ethernet]
+${MAC:+mac-address=$MAC}
 
 [ipv4]
 method=manual
-address1={{ cidrIP $nic.IPv4.Address }}/{{ cidrPrefix $nic.IPv4.Address }}{{ if $nic.IPv4.Gateway }},{{ $nic.IPv4.Gateway }}{{ end }}
-{{- if $nic.IPv4.DNS }}
-dns={{ join ";" $nic.IPv4.DNS }};
+address1={{ $ip }}/{{ $prefix }}{{ if $gw }},{{ $gw }}{{ end }}
+{{- if $dns }}
+dns={{ $dns }};
 {{- end }}
 may-fail=false
 
@@ -48,9 +101,9 @@ method=disabled
 
 [proxy]
 NMEOF
-chmod 600 /etc/NetworkManager/system-connections/{{ $nic.NameField }}.nmconnection
-{{- end }}
-{{- end }}
+chmod 600 /etc/NetworkManager/system-connections/$DEV.nmconnection
+
+echo "nm_keyfile: wrote static profile for $DEV (MAC=$MAC) → {{ $ip }}/{{ $prefix }}"
 %end
 {{- end }}
 {{- end -}}
