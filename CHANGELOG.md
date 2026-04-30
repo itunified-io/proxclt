@@ -2,6 +2,50 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.30.5 — 2026-04-30
+
+### feat: ubuntu2404 Subiquity autoinstall via cidata + GRUB cmdline injection
+
+Ubuntu 22.04.5+ / 24.04 live-server ISOs ship Subiquity (autoinstall via
+cloud-init NoCloud datasource) — no isolinux, no preseed support. Without a
+kernel-cmdline `autoinstall ds=nocloud\;s=/cidata/`, Subiquity prompts the
+operator to confirm, breaking unattended provisioning. The legacy
+`ubuntu2204` preseed template doesn't apply.
+
+This release adds:
+
+- `pkg/kickstart/templates/ubuntu2404/user-data.tmpl` — Subiquity autoinstall
+  template with `interactive-sections: []` (truly unattended), distro-aware
+  Wheel→sudo mapping in late-commands (`Wheel: true` renders `usermod -aG
+  sudo <user>` + sudoers.d entry, since Ubuntu has no `wheel` group), SSH
+  authorized-keys for primary user + root, hostname/keyboard/locale/network
+  rendered from manifest.
+- `pkg/kickstart/templates/ubuntu2404/meta-data.tmpl` — minimal cloud-init
+  meta-data with instance-id keyed on hostname.
+- `pkg/kickstart/ubuntu_iso_builder.go` — repacks the upstream Ubuntu install
+  ISO via xorriso `-indev`/`-outdev` (no 3 GB extraction overhead),
+  preserving original El Torito + UEFI boot images via `-boot_image any
+  replay`. Patches every GRUB `linux`/`linuxefi` line + isolinux `append`
+  line to append `autoinstall ds=nocloud\;s=/cidata/`. Idempotent (skips if
+  `autoinstall` already present). Embeds rendered `user-data` + `meta-data`
+  at `/cidata/` in the ISO root.
+- `pkg/kickstart/renderer.go` — `pickEntry()` recognizes `user-data.tmpl` as
+  a third entry-point in addition to `base.ks.tmpl` (RHEL/OEL kickstart) and
+  `preseed.cfg.tmpl` (legacy Debian preseed).
+- `pkg/config/hypervisor.go` — `KickstartConfig.Distro` accepts `ubuntu2404`.
+- 6 unit tests in `pkg/kickstart/ubuntu_iso_builder_test.go` covering GRUB
+  linux line injection, idempotency, isolinux append, linuxefi variant,
+  defaults, and missing-file rejection.
+
+Direct fix for the dbx-control deployment (infrastructure ADR-0109): VM 2900
+hung on Subiquity confirm because the legacy ubuntu2204 preseed builder
+couldn't generate a valid Subiquity-aware install ISO. Operator demand:
+"not good workaround, enhance kickstart auto install for ubuntu" — this
+ships the proper engineering fix.
+
+Workflow integration (single_vm dispatcher) lands in v2026.04.30.6+; this
+release ships the builder + templates + renderer wiring + tests.
+
 ## v2026.04.30.4 — 2026-04-30
 
 ### feat: replay + golden traces (#46)

@@ -81,7 +81,7 @@ type ISOConfig struct {
 
 // KickstartConfig is the per-env kickstart/preseed inputs proxctl renders into a bootstrap file.
 type KickstartConfig struct {
-	Distro          string              `yaml:"distro"                     json:"distro"                     validate:"required,oneof=oraclelinux8 oraclelinux9 ubuntu2204 rhel9 rocky9 sles15"`
+	Distro          string              `yaml:"distro"                     json:"distro"                     validate:"required,oneof=oraclelinux8 oraclelinux9 ubuntu2204 ubuntu2404 rhel9 rocky9 sles15"`
 	Timezone        string              `yaml:"timezone,omitempty"         json:"timezone,omitempty"`
 	KeyboardLayout  string              `yaml:"keyboard_layout,omitempty"  json:"keyboard_layout,omitempty"`
 	Lang            string              `yaml:"lang,omitempty"             json:"lang,omitempty"`

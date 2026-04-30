@@ -160,10 +160,11 @@ func (r *Renderer) Render(env *config.Env, nodeName string) (string, error) {
 		ctx.ScanIPs = cluster.ScanIPs
 	}
 
-	// Pick entry-point template. Prefer a template named "base.ks" then "preseed.cfg".
+	// Pick entry-point template. Prefer base.ks (RHEL/OEL kickstart) then preseed.cfg
+	// (Debian/Ubuntu legacy preseed) then user-data (Ubuntu 22.04+ Subiquity autoinstall).
 	entry := pickEntry(t)
 	if entry == "" {
-		return "", fmt.Errorf("distro %q: no entry template (expected base.ks.tmpl or preseed.cfg.tmpl)", distro)
+		return "", fmt.Errorf("distro %q: no entry template (expected base.ks.tmpl, preseed.cfg.tmpl, or user-data.tmpl)", distro)
 	}
 
 	var buf bytes.Buffer
@@ -175,7 +176,7 @@ func (r *Renderer) Render(env *config.Env, nodeName string) (string, error) {
 
 // pickEntry chooses the entry-point template name from the parsed set.
 func pickEntry(t *template.Template) string {
-	candidates := []string{"base.ks.tmpl", "preseed.cfg.tmpl", "base.ks", "preseed.cfg"}
+	candidates := []string{"base.ks.tmpl", "preseed.cfg.tmpl", "user-data.tmpl", "base.ks", "preseed.cfg", "user-data"}
 	for _, name := range candidates {
 		if t.Lookup(name) != nil {
 			return name
