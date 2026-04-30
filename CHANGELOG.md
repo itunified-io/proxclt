@@ -2,6 +2,26 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.30.4 — 2026-04-30
+
+### feat: replay + golden traces (#46)
+
+Item 2 of itunified-io/infrastructure agentic-AI hardening roadmap (Wave B foundation; ADR-0101 in infrastructure repo).
+
+- `pkg/trace/schema.go` — Record struct with Plan-RAG step_id, tool, input/output, decision, hash chain (SHA-256 per ADR-0095). SchemaVersion 1.
+- `pkg/trace/writer.go` — append-only JSONL writer; resumes hash chain when reopening an existing file
+- `pkg/trace/reader.go` — line-by-line reader; LoadAll convenience reads + verifies chain
+- `pkg/trace/replay.go` — three modes:
+  - **ModeStrict**: re-execute, abort on first output divergence (CI gate)
+  - **ModeObserve**: re-execute, log divergence, never abort (audit / dashboard)
+  - **ModeDryRun**: validate chain + print actions, no execution
+- `internal/root/replay.go` — new `proxctl replay <trace.jsonl>` subcommand with `--observe` / `--dry-run` / `--verbose` flags
+- 12 unit tests in `pkg/trace/{schema,replay}_test.go`
+
+Default executor (live tool dispatch via Bash/MCP/CLI) ships in v2026.04.30.5+; this release ships the trace primitive + replay engine + CLI wiring. The current default executor returns recorded output verbatim (so a fresh replay against an unchanged trace passes — useful for chain verification + CI structural validation).
+
+Used by linuxctl mirror (issue tbd) + infrastructure `lab-replay.sh` wrapper (issue tbd).
+
 ## v2026.04.30.3 — 2026-04-30
 
 ### fix: Database.Kind accepts ADR-0097 snake_case target types (#43)

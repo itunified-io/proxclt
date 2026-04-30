@@ -54,6 +54,7 @@ See docs/ for the full user guide, configuration reference, and licensing model.
 		newBootCmd(),
 		newWorkflowCmd(),
 		newLicenseCmd(),
+		newReplayCmd(),
 		newVersionCmd(),
 	)
 	return root
