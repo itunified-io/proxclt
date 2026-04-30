@@ -64,6 +64,25 @@ version: "19.25"
 	}
 }
 
+// TestDatabase_ADR0097Kinds locks in the snake_case Cloud Control target_type
+// values introduced by ADR-0097. Regression guard: agent #479 caught
+// /lab-up Phase A.3 failing because proxctl rejected `oracle_database`.
+func TestDatabase_ADR0097Kinds(t *testing.T) {
+	for _, kind := range []string{
+		"OracleDatabase", "PostgresDatabase", // legacy
+		"oracle_database", "rac_database", "pg_database", "pg_cluster", // ADR-0097
+	} {
+		y := "kind: " + kind + "\nname: TEST\n"
+		var d Database
+		if err := yaml.Unmarshal([]byte(y), &d); err != nil {
+			t.Fatalf("kind=%s: %v", kind, err)
+		}
+		if d.Kind != kind {
+			t.Errorf("kind=%s: got %q", kind, d.Kind)
+		}
+	}
+}
+
 func TestHooks_Roundtrip(t *testing.T) {
 	y := `
 on_apply_success:
