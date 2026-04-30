@@ -90,6 +90,12 @@ type KickstartConfig struct {
 	ChronyServers   []string            `yaml:"chrony_servers,omitempty"   json:"chrony_servers,omitempty"`
 	Sudo            *SudoConfig         `yaml:"sudo,omitempty"             json:"sudo,omitempty"`
 	Packages        *PackagesConfig     `yaml:"packages,omitempty"         json:"packages,omitempty"`
+	// Repos — extra `repo` directives written into the kickstart so packages
+	// from non-default repos (e.g. oracle-database-preinstall-19c from
+	// ol9_oracle_software) resolve at install time. When empty, the OEL9/OEL8
+	// templates fall back to a sensible default set (yum.oracle.com mirrors).
+	// Set this to override (e.g. internal Pulp/Foreman mirror).
+	Repos           []KickstartRepo     `yaml:"repos,omitempty"            json:"repos,omitempty"`
 	Firewall        *KSFirewall         `yaml:"firewall,omitempty"         json:"firewall,omitempty"`
 	UpdateSystem    bool                `yaml:"update_system,omitempty"    json:"update_system,omitempty"`
 	SSHKeys         map[string][]string `yaml:"ssh_keys,omitempty"         json:"ssh_keys,omitempty"`
@@ -99,6 +105,15 @@ type KickstartConfig struct {
 // SudoConfig captures sudoers-style flags.
 type SudoConfig struct {
 	WheelNopasswd bool `yaml:"wheel_nopasswd,omitempty" json:"wheel_nopasswd,omitempty"`
+}
+
+// KickstartRepo is a single `repo` directive emitted into the kickstart.
+// One of BaseURL or MirrorList must be set.
+type KickstartRepo struct {
+	Name       string `yaml:"name"                  json:"name"                  validate:"required"`
+	BaseURL    string `yaml:"baseurl,omitempty"     json:"baseurl,omitempty"`
+	MirrorList string `yaml:"mirrorlist,omitempty"  json:"mirrorlist,omitempty"`
+	Cost       int    `yaml:"cost,omitempty"        json:"cost,omitempty"`
 }
 
 // PackagesConfig enumerates base and post-install package lists.

@@ -27,7 +27,19 @@ user --name={{ $u.Name }}{{ if $u.Wheel }} --groups=wheel{{ end }}
 
 reboot --eject
 
-%packages
+# Repos — base + Oracle Software (see oraclelinux9/base.ks.tmpl for rationale).
+{{- if .Kickstart.Repos }}
+{{- range $r := .Kickstart.Repos }}
+repo --name={{ $r.Name }}{{ if $r.BaseURL }} --baseurl={{ $r.BaseURL }}{{ end }}{{ if $r.MirrorList }} --mirrorlist={{ $r.MirrorList }}{{ end }}
+{{- end }}
+{{- else }}
+repo --name=ol8_appstream --baseurl=https://yum.oracle.com/repo/OracleLinux/OL8/appstream/x86_64/
+repo --name=ol8_baseos_latest --baseurl=https://yum.oracle.com/repo/OracleLinux/OL8/baseos/latest/x86_64/
+repo --name=ol8_oracle_software --baseurl=https://yum.oracle.com/repo/OracleLinux/OL8/oracle/software/x86_64/
+{{- end }}
+
+# --ignoremissing: never block unattended install on missing pkg prompt.
+%packages --ignoremissing
 @base
 @core
 chrony
