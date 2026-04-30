@@ -2,6 +2,25 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.30.1 — 2026-04-30
+
+### fix: kickstart pins disk partitioning to sda (#39)
+
+`common/disk.tmpl` issued plain `clearpart --all` + `part /boot…` without
+any `--ondisk` constraint. Anaconda autoselected the target disk by size
+heuristic, so when the hypervisor manifest provisioned multiple disks
+(scsi0=root 64G, scsi1=u01 100G, scsi2..4=asm 40+40+20G), the OS landed
+on `sdb` (the largest by accident) instead of `sda` (storage_class=root).
+
+Result: `linuxctl apply` failed at the disk manager — sdb was already
+LVM-managed by the system, but linux.yaml's `additional` disk for u01
+expected sdb to be free.
+
+Fix: explicit `ignoredisk --only-use=sda`, `clearpart --drives=sda`,
+`bootloader --boot-drive=sda`, `--ondisk=sda` on every `part`. Anaconda
+now only touches sda; sdb…sde stay raw for post-install management
+(linuxctl additional disk_layout, ASM disks via AFD).
+
 ## v2026.04.28.10 — 2026-04-29
 
 ### fix: nm_keyfile detects runtime interface name (#37)

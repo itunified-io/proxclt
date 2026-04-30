@@ -1,12 +1,18 @@
 {{- define "disk" -}}
-# Disk partitioning — LVM on the first disk; additional disks left for post-install.
+# Disk partitioning — LVM on the first disk (sda) only. All --ondisk clauses
+# pin Anaconda to sda so additional disks (sdb, sdc, …) are left untouched
+# for post-install management (e.g. linuxctl additional disk_layout, ASM
+# disks via AFD). Without --ondisk, Anaconda's autoselect picks by size and
+# may put the system on a larger data disk, breaking the storage_class
+# contract from the hypervisor manifest.
 zerombr
-clearpart --all --initlabel
-bootloader --location=mbr --timeout=5
-part /boot --fstype=xfs --size=1024 --asprimary
-part /boot/efi --fstype=vfat --size=512 --asprimary
-part pv.01 --size=1 --grow
+ignoredisk --only-use=sda
+clearpart --all --initlabel --drives=sda
+bootloader --location=mbr --timeout=5 --boot-drive=sda
+part /boot/efi --fstype=vfat --size=512 --asprimary --ondisk=sda
+part /boot     --fstype=xfs  --size=1024 --asprimary --ondisk=sda
+part pv.01     --size=1 --grow --ondisk=sda
 volgroup vg_system pv.01
 logvol swap --name=lv_swap --vgname=vg_system --size=4096
-logvol / --fstype=xfs --name=lv_root --vgname=vg_system --size=1 --grow
+logvol /    --fstype=xfs  --name=lv_root --vgname=vg_system --size=1 --grow
 {{- end -}}
