@@ -1,0 +1,114 @@
+#cloud-config
+# proxctl-generated Subiquity autoinstall for {{ .FQDN }}
+# Distro: {{ .Kickstart.Distro }}
+#
+# Ubuntu 22.04.5+ / 24.04+ server ISOs ship Subiquity (autoinstall via
+# cloud-init cidata) — no preseed support, no isolinux. proxctl builds
+# a cidata ISO containing this user-data + a meta-data file; Subiquity
+# auto-detects it as a second CD-ROM and runs autoinstall non-
+# interactively (interactive-sections: []).
+autoinstall:
+  version: 1
+  interactive-sections: []
+  locale: {{ if .Kickstart.Lang }}{{ .Kickstart.Lang }}{{ else }}en_US.UTF-8{{ end }}
+  keyboard:
+    layout: {{ if .Kickstart.KeyboardLayout }}{{ .Kickstart.KeyboardLayout }}{{ else }}us{{ end }}
+
+  identity:
+    hostname: {{ .Hostname }}
+{{- $primaryUser := "" }}
+{{- range $u := .Kickstart.AdditionalUsers }}
+{{- if eq $primaryUser "" }}
+{{- $primaryUser = $u.Name }}
+    realname: {{ $u.Name }}
+    username: {{ $u.Name }}
+    # Locked password — operator authenticates via SSH key.
+    password: '!locked!'
+{{- end }}
+{{- end }}
+{{- if eq $primaryUser "" }}
+    realname: ubuntu
+    username: ubuntu
+    password: '!locked!'
+{{- end }}
+
+  ssh:
+    install-server: true
+    allow-pw: false
+    authorized-keys:
+{{- range $u := .Kickstart.AdditionalUsers }}
+{{- if $u.SSHKey }}
+      - {{ $u.SSHKey | squote }}
+{{- end }}
+{{- end }}
+
+  network:
+    version: 2
+    ethernets:
+{{- range $i, $n := .Node.NICs }}
+{{- if $n.IPv4 }}
+      {{ $n.Name }}:
+        dhcp4: false
+        dhcp6: false
+        addresses: [{{ $n.IPv4.Address }}]
+{{- if $n.IPv4.Gateway }}
+        routes:
+          - to: default
+            via: {{ $n.IPv4.Gateway }}
+{{- end }}
+{{- if $n.IPv4.DNS }}
+        nameservers:
+          addresses: [{{ range $j, $d := $n.IPv4.DNS }}{{ if $j }}, {{ end }}{{ $d }}{{ end }}]
+{{- if $.Env.Metadata.Domain }}
+          search: [{{ $.Env.Metadata.Domain }}]
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+  storage:
+    layout:
+      name: lvm
+
+  packages:
+{{- if and .Kickstart.Packages .Kickstart.Packages.Base }}
+{{- range $p := .Kickstart.Packages.Base }}
+    - {{ $p }}
+{{- end }}
+{{- else }}
+    - chrony
+    - openssh-server
+    - qemu-guest-agent
+    - cifs-utils
+    - jq
+    - curl
+    - vim
+    - ca-certificates
+{{- end }}
+
+  late-commands:
+    # Root SSH key install
+    - 'curtin in-target -- mkdir -p /root/.ssh'
+    - 'curtin in-target -- chmod 700 /root/.ssh'
+{{- range $user, $keys := .Kickstart.SSHKeys }}
+{{- if eq $user "root" }}
+{{- range $k := $keys }}
+    - 'echo {{ $k | squote }} | curtin in-target -- tee -a /root/.ssh/authorized_keys'
+{{- end }}
+{{- end }}
+{{- end }}
+    - 'curtin in-target -- chmod 600 /root/.ssh/authorized_keys || true'
+    - 'curtin in-target -- sed -i "s/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/" /etc/ssh/sshd_config'
+    # sudo NOPASSWD for wheel-equivalent users
+{{- range $u := .Kickstart.AdditionalUsers }}
+{{- if $u.Wheel }}
+    - 'curtin in-target -- usermod -aG sudo {{ $u.Name }}'
+    - 'echo "{{ $u.Name }} ALL=(ALL) NOPASSWD: ALL" | curtin in-target -- tee /etc/sudoers.d/{{ $u.Name }}'
+    - 'curtin in-target -- chmod 0440 /etc/sudoers.d/{{ $u.Name }}'
+{{- end }}
+{{- end }}
+    # Enable services
+    - 'curtin in-target -- systemctl enable chrony qemu-guest-agent ssh'
+{{- if .Kickstart.UpdateSystem }}
+    - 'curtin in-target -- apt-get -y update && apt-get -y upgrade'
+{{- end }}
