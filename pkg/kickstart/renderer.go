@@ -100,6 +100,73 @@ func (r *Renderer) SupportedDistros() []string {
 	return out
 }
 
+// RenderTemplate executes a specific template by name (e.g. "user-data.tmpl",
+// "meta-data.tmpl") for nodeName. Used by Ubuntu Subiquity flows that need
+// to render multiple cidata files separately, in contrast to the single-
+// entry-point Render path used for kickstart/preseed.
+func (r *Renderer) RenderTemplate(env *config.Env, nodeName, templateName string) (string, error) {
+	if env == nil {
+		return "", fmt.Errorf("env is nil")
+	}
+	hyp := env.Spec.Hypervisor.Resolved()
+	if hyp == nil {
+		return "", fmt.Errorf("env.spec.hypervisor not resolved")
+	}
+	node, ok := hyp.Nodes[nodeName]
+	if !ok {
+		return "", fmt.Errorf("node %q not found in hypervisor.nodes", nodeName)
+	}
+	if hyp.Kickstart == nil {
+		return "", fmt.Errorf("env has no kickstart config")
+	}
+	ks := hyp.Kickstart
+	distro := ks.Distro
+	t, ok := r.entries[distro]
+	if !ok {
+		return "", fmt.Errorf("unsupported distro %q (supported: %v)", distro, r.distros)
+	}
+	if t.Lookup(templateName) == nil {
+		return "", fmt.Errorf("distro %q has no template %q", distro, templateName)
+	}
+
+	nets := map[string]config.NetworkZone{}
+	if env.Spec.Networks.Resolved() != nil {
+		nets = env.Spec.Networks.Resolved().Zones
+	}
+	var cluster *config.Cluster
+	if env.Spec.Cluster != nil {
+		cluster = env.Spec.Cluster.Resolved()
+	}
+	hostname := nodeName
+	domain := env.Metadata.Domain
+	fqdn := hostname
+	if domain != "" {
+		fqdn = hostname + "." + domain
+	}
+	ctx := RenderContext{
+		Env:       env,
+		Node:      &node,
+		NodeName:  nodeName,
+		Hostname:  hostname,
+		FQDN:      fqdn,
+		Kickstart: ks,
+		Networks:  nets,
+		Cluster:   cluster,
+		PublicIP:  node.IPs["public"],
+		VIPIP:     node.IPs["vip"],
+		PrivateIP: node.IPs["private"],
+	}
+	if cluster != nil {
+		ctx.ScanIPs = cluster.ScanIPs
+	}
+
+	var buf bytes.Buffer
+	if err := t.ExecuteTemplate(&buf, templateName, ctx); err != nil {
+		return "", fmt.Errorf("execute %s/%s: %w", distro, templateName, err)
+	}
+	return buf.String(), nil
+}
+
 // Render generates a kickstart file for nodeName using env's hypervisor/kickstart data.
 func (r *Renderer) Render(env *config.Env, nodeName string) (string, error) {
 	if env == nil {

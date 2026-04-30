@@ -23,6 +23,10 @@ func newKickstartCmd() *cobra.Command {
 	var buildBootloader string
 	var uploadStorage string
 	var uploadNode string
+	var ubuntuNode string
+	var ubuntuSourceISO string
+	var ubuntuOut string
+	var ubuntuWorkDir string
 
 	c.AddCommand(
 		func() *cobra.Command {
@@ -129,6 +133,80 @@ func newKickstartCmd() *cobra.Command {
 			}
 			cc.Flags().StringVar(&uploadStorage, "storage", "", "PVE storage name")
 			cc.Flags().StringVar(&uploadNode, "node", "", "PVE node name")
+			return cc
+		}(),
+		func() *cobra.Command {
+			cc := &cobra.Command{
+				Use:   "build-ubuntu [ENV_FILE]",
+				Short: "Build Ubuntu 22.04+ Subiquity autoinstall ISO (cidata + GRUB cmdline injection)",
+				Long: `Renders user-data + meta-data from the env manifest, embeds them at /cidata/
+in a remastered copy of the upstream Ubuntu live-server install ISO, and
+patches the GRUB linux/linuxefi/isolinux append lines to add
+` + "`autoinstall ds=nocloud\\;s=/cidata/`" + ` to the kernel cmdline. The
+result is a standalone ISO that boots Ubuntu unattended via Subiquity.
+
+Use this when env.spec.hypervisor.kickstart.distro = "ubuntu2404".`,
+				Args: cobra.MaximumNArgs(1),
+				RunE: func(cmd *cobra.Command, args []string) error {
+					if ubuntuSourceISO == "" {
+						return fmt.Errorf("--source-iso required (path to upstream Ubuntu live-server ISO)")
+					}
+					if ubuntuNode == "" {
+						return fmt.Errorf("--node required")
+					}
+					var envPath string
+					if len(args) > 0 {
+						envPath = args[0]
+					}
+					env, err := loadEnvManifest(envPath)
+					if err != nil {
+						return err
+					}
+					rnd, err := kickstart.NewRenderer()
+					if err != nil {
+						return err
+					}
+					userData, err := rnd.RenderTemplate(env, ubuntuNode, "user-data.tmpl")
+					if err != nil {
+						return fmt.Errorf("render user-data: %w", err)
+					}
+					metaData, err := rnd.RenderTemplate(env, ubuntuNode, "meta-data.tmpl")
+					if err != nil {
+						return fmt.Errorf("render meta-data: %w", err)
+					}
+					cidataDir, err := os.MkdirTemp("", "proxctl-ubuntu-cidata-")
+					if err != nil {
+						return err
+					}
+					defer os.RemoveAll(cidataDir)
+					if err := os.WriteFile(filepath.Join(cidataDir, "user-data"), []byte(userData), 0o644); err != nil {
+						return err
+					}
+					if err := os.WriteFile(filepath.Join(cidataDir, "meta-data"), []byte(metaData), 0o644); err != nil {
+						return err
+					}
+					b := kickstart.NewUbuntuISOBuilder(ubuntuSourceISO, cidataDir)
+					if ubuntuWorkDir != "" {
+						b.WorkDir = ubuntuWorkDir
+					}
+					path, err := b.Build(ubuntuNode)
+					if err != nil {
+						return err
+					}
+					if ubuntuOut != "" && ubuntuOut != path {
+						if err := os.Rename(path, ubuntuOut); err != nil {
+							return err
+						}
+						path = ubuntuOut
+					}
+					fmt.Println(path)
+					return nil
+				},
+			}
+			cc.Flags().StringVar(&ubuntuNode, "node", "", "Node name from hypervisor.nodes (used as hostname)")
+			cc.Flags().StringVar(&ubuntuSourceISO, "source-iso", "", "Path to upstream Ubuntu live-server install ISO")
+			cc.Flags().StringVarP(&ubuntuOut, "out", "o", "", "Output ISO path (default: tempdir under workdir)")
+			cc.Flags().StringVar(&ubuntuWorkDir, "workdir", "", "Scratch directory (default: $TMPDIR)")
 			return cc
 		}(),
 		&cobra.Command{

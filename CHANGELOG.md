@@ -2,6 +2,33 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.30.6 — 2026-04-30
+
+### feat: `proxctl kickstart build-ubuntu` CLI + macaddress NIC matching
+
+- `proxctl kickstart build-ubuntu --env <env.yaml> --node <name> --source-iso <path>`
+  drives the v2026.04.30.5 `UbuntuISOBuilder` end-to-end: renders
+  `user-data.tmpl` + `meta-data.tmpl` from the env manifest, writes them to a
+  scratch cidata dir, calls the builder to produce a remastered Ubuntu install
+  ISO with autoinstall in GRUB + cidata at `/cidata/`. Operator uploads the
+  result via `proxctl kickstart upload`.
+- `Renderer.RenderTemplate(env, nodeName, templateName)` — new public method
+  for the multi-file Subiquity flow (Render() picks a single entry point;
+  Subiquity needs both user-data + meta-data rendered separately).
+- `pkg/kickstart/templates/ubuntu2404/user-data.tmpl` — netplan ethernet match
+  is now `macaddress` (when manifest has a real MAC) with fallback to
+  `name: "en*"` (when MAC is `auto` or empty), plus `set-name` to rename the
+  matched interface back to the manifest-declared logical name. Fixes a class
+  of failures where Ubuntu 24.04 names virtio NICs `enp6s18` on q35 vs
+  `ens18` on i440fx — static names don't survive bus changes.
+
+Workflow dispatcher integration (`SingleVMWorkflow` auto-routes ubuntu2404 to
+the new builder + uploads the remastered ISO as the install ISO instead of
+the upstream one) ships in v2026.04.30.7. For now operators using
+`distro: ubuntu2404` build the ISO out-of-band via the new CLI, upload it,
+and run `proxctl-stack-up --skip-kickstart-build` (or equivalent) against a
+manifest that points `iso.image` at the remastered ISO.
+
 ## v2026.04.30.5 — 2026-04-30
 
 ### feat: ubuntu2404 Subiquity autoinstall via cidata + GRUB cmdline injection

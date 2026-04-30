@@ -44,10 +44,20 @@ autoinstall:
 
   network:
     version: 2
+    # Match by MAC address — Ubuntu 24.04 names virtio NICs `enp6s18` on q35
+    # vs `ens18` on i440fx, so static names are non-portable. set-name renames
+    # back to the manifest-declared logical name for stability.
     ethernets:
 {{- range $i, $n := .Node.NICs }}
 {{- if $n.IPv4 }}
       {{ $n.Name }}:
+        match:
+{{- if and $n.MAC (ne $n.MAC "auto") }}
+          macaddress: {{ $n.MAC | lower }}
+{{- else }}
+          name: "en*"
+{{- end }}
+        set-name: {{ $n.Name }}
         dhcp4: false
         dhcp6: false
         addresses: [{{ $n.IPv4.Address }}]
