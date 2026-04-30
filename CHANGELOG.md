@@ -2,6 +2,30 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.30.7 — 2026-04-30
+
+### fix: ubuntu2404 autoinstall must inject BEFORE casper `---` separator
+
+v2026.04.30.5/6 patched the GRUB linux line by appending the autoinstall
+args at the end. Caught during the dbx-control live deployment: that placed
+`autoinstall` AFTER `---`, where casper reserves args for the post-install
+kernel and the live boot's Subiquity does NOT see them. Result: Subiquity
+defaulted to interactive mode and prompted the operator to confirm —
+exactly the failure mode the patch was meant to eliminate.
+
+This release:
+
+- `pkg/kickstart/ubuntu_iso_builder.go` — `patchKernelCmdline` now uses
+  `injectBeforeSeparator()` which inserts immediately before the casper
+  `---` separator (or appends if no separator exists).
+- Default `AutoinstallKernelArgs` updated to `s=/cdrom/cidata/` (live
+  system mounts the install ISO at `/cdrom`, not `/`).
+- New unit test `TestPatchKernelCmdline_InjectsBeforeCasperSeparator`
+  asserting `autoinstall` index < `---` index.
+- Existing tests updated for the new path + injection position.
+
+Direct fix for VM 2900 / dbx-control deployment (infrastructure ADR-0109).
+
 ## v2026.04.30.6 — 2026-04-30
 
 ### feat: `proxctl kickstart build-ubuntu` CLI + macaddress NIC matching

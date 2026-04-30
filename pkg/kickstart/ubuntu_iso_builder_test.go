@@ -20,11 +20,11 @@ menuentry "Try or Install Ubuntu Server" {
 	if err := os.WriteFile(src, []byte(in), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := patchKernelCmdline(src, dst, `autoinstall ds=nocloud\;s=/cidata/`); err != nil {
+	if err := patchKernelCmdline(src, dst, `autoinstall ds=nocloud\;s=/cdrom/cidata/`); err != nil {
 		t.Fatal(err)
 	}
 	got, _ := os.ReadFile(dst)
-	if !strings.Contains(string(got), `autoinstall ds=nocloud\;s=/cidata/`) {
+	if !strings.Contains(string(got), `autoinstall ds=nocloud\;s=/cdrom/cidata/`) {
 		t.Errorf("autoinstall args not injected:\n%s", got)
 	}
 	if !strings.Contains(string(got), `/casper/vmlinuz`) || !strings.Contains(string(got), `---`) {
@@ -36,9 +36,9 @@ func TestPatchKernelCmdline_Idempotent(t *testing.T) {
 	dir := t.TempDir()
 	src := filepath.Join(dir, "src.cfg")
 	dst := filepath.Join(dir, "dst.cfg")
-	already := "linux /casper/vmlinuz --- autoinstall ds=nocloud\\;s=/cidata/\n"
+	already := "linux /casper/vmlinuz autoinstall ds=nocloud\\;s=/cdrom/cidata/ ---\n"
 	os.WriteFile(src, []byte(already), 0o644)
-	patchKernelCmdline(src, dst, `autoinstall ds=nocloud\;s=/cidata/`)
+	patchKernelCmdline(src, dst, `autoinstall ds=nocloud\;s=/cdrom/cidata/`)
 	got, _ := os.ReadFile(dst)
 	// Should NOT have appended a second copy of autoinstall.
 	if strings.Count(string(got), "autoinstall") != 1 {
@@ -58,14 +58,33 @@ label install
   append initrd=/casper/initrd quiet ---
 `
 	os.WriteFile(src, []byte(in), 0o644)
-	patchKernelCmdline(src, dst, `autoinstall ds=nocloud\;s=/cidata/`)
+	patchKernelCmdline(src, dst, `autoinstall ds=nocloud\;s=/cdrom/cidata/`)
 	got, _ := os.ReadFile(dst)
-	if !strings.Contains(string(got), `autoinstall ds=nocloud\;s=/cidata/`) {
+	if !strings.Contains(string(got), `autoinstall ds=nocloud\;s=/cdrom/cidata/`) {
 		t.Errorf("autoinstall not appended to isolinux append line:\n%s", got)
 	}
 	// kernel line untouched (we only patch append/linux/linuxefi).
 	if !strings.Contains(string(got), "kernel /casper/vmlinuz\n") {
 		t.Errorf("kernel line should be untouched:\n%s", got)
+	}
+}
+
+func TestPatchKernelCmdline_InjectsBeforeCasperSeparator(t *testing.T) {
+	// Critical: in casper boot, args AFTER `---` are reserved for the
+	// post-install kernel and NOT seen by Subiquity in the live boot.
+	// `autoinstall` MUST appear BEFORE `---`.
+	dir := t.TempDir()
+	src := filepath.Join(dir, "grub.cfg")
+	dst := filepath.Join(dir, "grub-new.cfg")
+	in := "menuentry \"Install\" {\n    linux /casper/vmlinuz quiet --- foo bar\n}\n"
+	os.WriteFile(src, []byte(in), 0o644)
+	patchKernelCmdline(src, dst, `autoinstall ds=nocloud\;s=/cdrom/cidata/`)
+	got, _ := os.ReadFile(dst)
+	gotS := string(got)
+	autoIdx := strings.Index(gotS, "autoinstall")
+	sepIdx := strings.Index(gotS, "---")
+	if autoIdx < 0 || sepIdx < 0 || autoIdx > sepIdx {
+		t.Errorf("autoinstall must appear BEFORE casper `---` separator:\n%s", gotS)
 	}
 }
 
@@ -78,16 +97,16 @@ func TestPatchKernelCmdline_LinuxefiVariant(t *testing.T) {
     initrdefi /casper/initrd
 }`
 	os.WriteFile(src, []byte(in), 0o644)
-	patchKernelCmdline(src, dst, `autoinstall ds=nocloud\;s=/cidata/`)
+	patchKernelCmdline(src, dst, `autoinstall ds=nocloud\;s=/cdrom/cidata/`)
 	got, _ := os.ReadFile(dst)
-	if !strings.Contains(string(got), `linuxefi /casper/vmlinuz quiet autoinstall ds=nocloud\;s=/cidata/`) {
+	if !strings.Contains(string(got), `linuxefi /casper/vmlinuz quiet autoinstall ds=nocloud\;s=/cdrom/cidata/`) {
 		t.Errorf("linuxefi variant not patched:\n%s", got)
 	}
 }
 
 func TestNewUbuntuISOBuilder_Defaults(t *testing.T) {
 	b := NewUbuntuISOBuilder("/tmp/foo.iso", "/tmp/cidata")
-	if b.AutoinstallKernelArgs != `autoinstall ds=nocloud\;s=/cidata/` {
+	if b.AutoinstallKernelArgs != `autoinstall ds=nocloud\;s=/cdrom/cidata/` {
 		t.Errorf("default autoinstall args: %q", b.AutoinstallKernelArgs)
 	}
 }

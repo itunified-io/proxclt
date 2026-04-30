@@ -21,7 +21,7 @@ import (
 // apply. Instead, autoinstall requires:
 //
 //  1. The install ISO itself, modified so its GRUB linux entries pass
-//     `autoinstall ds=nocloud\;s=/cidata/` on the kernel cmdline. Without
+//     `autoinstall ds=nocloud\;s=/cdrom/cidata/` on the kernel cmdline. Without
 //     this, Subiquity prompts the operator to confirm — defeating the
 //     purpose of automation.
 //  2. A `cidata` directory containing user-data + meta-data added to the
@@ -33,7 +33,7 @@ import (
 //     extraction overhead. xorriso preserves the original El Torito
 //     boot image (BIOS) + UEFI eltorito.img automatically with
 //     `-boot_image any replay`.
-//   - Inject `autoinstall ds=nocloud\;s=/cidata/` into every `linux`
+//   - Inject `autoinstall ds=nocloud\;s=/cdrom/cidata/` into every `linux`
 //     line of /boot/grub/grub.cfg + isolinux/txt.cfg if present.
 //   - Add the cidata files at /cidata/ so Subiquity finds them.
 //
@@ -58,7 +58,7 @@ func NewUbuntuISOBuilder(sourceISOPath, cidataDir string) *UbuntuISOBuilder {
 	return &UbuntuISOBuilder{
 		SourceISOPath:         sourceISOPath,
 		CIDataDir:             cidataDir,
-		AutoinstallKernelArgs: `autoinstall ds=nocloud\;s=/cidata/`,
+		AutoinstallKernelArgs: `autoinstall ds=nocloud\;s=/cdrom/cidata/`,
 	}
 }
 
@@ -181,12 +181,21 @@ func extractISOFile(isoPath, srcPath, dstPath string) error {
 }
 
 // patchKernelCmdline rewrites lines beginning with `linux` (or `kernel`/`append`
-// for legacy isolinux) to append the supplied args, unless they're already
-// present. Idempotent: re-running on an already-patched config is a no-op.
+// for legacy isolinux) to inject the supplied autoinstall args, unless they're
+// already present. Idempotent: re-running on an already-patched config is a
+// no-op.
+//
+// Critical detail: in Ubuntu casper boot, `---` on the linux line separates
+// arguments seen by the live boot kernel (BEFORE `---`) from arguments
+// reserved for the post-install kernel (AFTER `---`). Subiquity reads
+// `/proc/cmdline` of the live boot, so `autoinstall` MUST appear BEFORE
+// `---` to take effect — otherwise Subiquity defaults to interactive mode
+// and prompts the operator to confirm. We insert immediately before the
+// `---` separator when present, else append.
 //
 // Match patterns:
-//   - GRUB:     `linux ... <args>`
-//   - isolinux: `append ... <args>` (used after `kernel <path>`)
+//   - GRUB:     `linux ... [---] <args>`
+//   - isolinux: `append ... [---] <args>`
 func patchKernelCmdline(srcPath, dstPath, autoinstallArgs string) error {
 	data, err := os.ReadFile(srcPath)
 	if err != nil {
@@ -194,7 +203,7 @@ func patchKernelCmdline(srcPath, dstPath, autoinstallArgs string) error {
 	}
 	lines := strings.Split(string(data), "\n")
 	// Match the leading verb (linux | linuxefi | append) at the start of a
-	// trimmed line. We preserve original indentation via a capture group.
+	// trimmed line. Preserve original indentation via a capture group.
 	re := regexp.MustCompile(`^(\s*)(linux|linuxefi|append)\s+(.*)$`)
 	for i, line := range lines {
 		m := re.FindStringSubmatch(line)
@@ -203,10 +212,25 @@ func patchKernelCmdline(srcPath, dstPath, autoinstallArgs string) error {
 		}
 		body := m[3]
 		if strings.Contains(body, "autoinstall") {
-			// Already patched; leave alone.
+			// Already patched.
 			continue
 		}
-		lines[i] = m[1] + m[2] + " " + body + " " + autoinstallArgs
+		newBody := injectBeforeSeparator(body, autoinstallArgs)
+		lines[i] = m[1] + m[2] + " " + newBody
 	}
 	return os.WriteFile(dstPath, []byte(strings.Join(lines, "\n")), 0o644)
+}
+
+// injectBeforeSeparator inserts args immediately before the casper `---`
+// separator if present; otherwise appends to the end.
+func injectBeforeSeparator(body, args string) string {
+	// Look for `---` as a standalone token (surrounded by whitespace, or at
+	// end of line). Use a regex anchored on word boundaries via spaces.
+	sepRE := regexp.MustCompile(`(\s)---(\s|$)`)
+	if loc := sepRE.FindStringIndex(body); loc != nil {
+		// Insert args before the matched `(\s)---`. loc[0] is the leading
+		// whitespace; insert just after it but before the `---`.
+		return body[:loc[0]] + " " + args + body[loc[0]:]
+	}
+	return body + " " + args
 }
