@@ -44,7 +44,30 @@ user --name={{ $u.Name }}{{ if $u.Wheel }} --groups=wheel{{ end }}
 # (when scsi0 boot is briefly delayed) hits the install ISO → install loop.
 reboot --eject
 
-%packages
+# Repos — base ISO + Oracle Software for Enterprise Linux (yum.oracle.com).
+# Without an Oracle repo, packages like oracle-database-preinstall-19c (the
+# Oracle DB prerequisites RPM) aren't resolvable at install time and Anaconda
+# halts on an interactive prompt. Mirror via the official Oracle yum
+# repository — public, no MOS account needed, signed.
+{{- if .Kickstart.Repos }}
+{{- range $r := .Kickstart.Repos }}
+repo --name={{ $r.Name }}{{ if $r.BaseURL }} --baseurl={{ $r.BaseURL }}{{ end }}{{ if $r.MirrorList }} --mirrorlist={{ $r.MirrorList }}{{ end }}{{ if $r.Cost }} --cost={{ $r.Cost }}{{ end }}
+{{- end }}
+{{- else }}
+# Default Oracle Software repo. Override via Kickstart.Repos in env.yaml.
+repo --name=ol9_appstream --baseurl=https://yum.oracle.com/repo/OracleLinux/OL9/appstream/x86_64/
+repo --name=ol9_baseos --baseurl=https://yum.oracle.com/repo/OracleLinux/OL9/baseos/latest/x86_64/
+repo --name=ol9_oracle_software --baseurl=https://yum.oracle.com/repo/OracleLinux/OL9/oracle/software/x86_64/
+repo --name=ol9_UEKR7 --baseurl=https://yum.oracle.com/repo/OracleLinux/OL9/UEKR7/x86_64/
+{{- end }}
+
+# --ignoremissing: do NOT halt on interactive prompt if a package can't be
+# resolved at install time (e.g. transient repo outage, package renamed
+# between releases). Unattended kickstart must never block on yes/no.
+# Missing pkgs get logged + skipped; linuxctl Phase C re-installs anything
+# critical via dnf with the same Oracle repos, so a missing kickstart pkg
+# is never the final state.
+%packages --ignoremissing
 @^minimal-environment
 @core
 chrony
