@@ -2,6 +2,24 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.04.30.3 — 2026-04-30
+
+### fix: Database.Kind accepts ADR-0097 snake_case target types (#43)
+
+`pkg/config/database.go` validator only allowed legacy CamelCase
+(`OracleDatabase`, `PostgresDatabase`). DbSys manifests written per
+ADR-0097 (Oracle Cloud Control target_type alignment) use the
+snake_case form (`oracle_database`, `rac_database`, `pg_database`,
+`pg_cluster`) and failed `proxctl kickstart generate` validation.
+
+Now accepts both legacy + ADR-0097 forms. Sub-target types
+(`oracle_pdb`, `oracle_listener`, `oracle_asm`, `oracle_instance`,
+`oracle_home`, `oracle_dg_topology`, `cluster`, `host`) remain
+forbidden as top-level kinds — they live under `spec.*`.
+
+Caught during /lab-up Phase A.3 (infrastructure issue #479) on
+2026-04-30.
+
 ## v2026.04.30.1 — 2026-04-30
 
 ### fix: kickstart pins disk partitioning to sda (#39)
