@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os/exec"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -223,4 +224,45 @@ func TestFinalizeSingle_NilClient(t *testing.T) {
 	err := FinalizeSingle(context.Background(), nil, "pve", 100)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Client not set")
+}
+
+// TestProbeSSHViaSystemNC_PortClosed exercises the nc-based probe path
+// against a localhost port that is guaranteed closed. Confirms that:
+//   1. The function shells out to `nc` (not net.Dial) on systems where
+//      the binary is available.
+//   2. A closed port returns a non-nil error containing the nc invocation.
+//
+// We don't test the success path here because that would require a live
+// listening service; integration coverage lives in the lab-up live test.
+func TestProbeSSHViaSystemNC_PortClosed(t *testing.T) {
+	if _, err := exec.LookPath("nc"); err != nil {
+		t.Skip("nc not on PATH — probe path not exercised in this test env")
+	}
+	// 127.0.0.1:1 is reserved + always closed in standard Linux/macOS.
+	err := probeSSHViaSystemNC(context.Background(), "127.0.0.1", 1)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "nc -z 127.0.0.1 1")
+}
+
+// TestWaitForSSHUp_PrefersDialerWhenInjected confirms that injecting a
+// custom Dialer (test fake) bypasses the nc shell-out and uses the legacy
+// net.Dial code path. This guards against future refactors silently
+// breaking test isolation.
+func TestWaitForSSHUp_PrefersDialerWhenInjected(t *testing.T) {
+	dialerCalls := 0
+	fakeDialer := func(ctx context.Context, network, address string) (net.Conn, error) {
+		dialerCalls++
+		// Force a banner-success path so the test doesn't time out.
+		client, server := net.Pipe()
+		go func() { _, _ = server.Write([]byte("SSH-2.0-test\r\n")); _ = server.Close() }()
+		return client, nil
+	}
+	opts := &FinalizeOptions{
+		Timeout:      2 * time.Second,
+		PollInterval: 50 * time.Millisecond,
+		Dialer:       fakeDialer,
+	}
+	err := waitForSSHUp(context.Background(), "10.0.0.1", opts)
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, dialerCalls, 1, "injected Dialer should be invoked at least once")
 }

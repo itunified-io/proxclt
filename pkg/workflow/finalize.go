@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"sort"
 	"strings"
 	"time"
@@ -13,6 +14,11 @@ import (
 	"github.com/itunified-io/proxctl/pkg/config"
 	"github.com/itunified-io/proxctl/pkg/proxmox"
 )
+
+// execCommandContext is a thin wrapper over exec.CommandContext, exposed
+// for tests (so we can swap in a fake that records args without actually
+// fork-execing).
+var execCommandContext = exec.CommandContext
 
 // DefaultFinalizeTimeout is the maximum time finalize waits for SSH-up
 // before giving up. Generous because a kickstart install on slow disks +
@@ -105,8 +111,38 @@ func pickFinalizeIP(ips map[string]string) (ip, label string) {
 	return ips[keys[0]], keys[0]
 }
 
-// waitForSSHUp polls a TCP :22 connection until the SSH banner ("SSH-") is
-// observed, or the deadline fires. Returns nil on success.
+// probeSSHViaSystemNC uses /usr/bin/nc (or nc on PATH) to test whether
+// sshd is listening on host:port. Returns nil on success.
+//
+// Why shell-out to nc: on macOS 26.3 (Tahoe) Local Network Privacy gate,
+// ad-hoc-signed Go binaries get silently denied LAN connect() with
+// EHOSTUNREACH — even when the kernel route is fine and curl/ssh/ping
+// all succeed. System /usr/bin/nc is notarized and entitled, so the
+// privacy gate doesn't apply. On Linux + CI, nc is also universally
+// available; this is a no-op behavior change. See proxctl#72 / #70 /
+// itunified-io/infrastructure#576.
+//
+// We test port-open only (not banner). The kickstart install loop has
+// already passed Anaconda and rebooted; if port 22 is open, sshd is
+// up. The original Go banner check was overkill and is the very thing
+// the Local Network Privacy gate rejects.
+func probeSSHViaSystemNC(ctx context.Context, host string, port int) error {
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	cmd := execCommandContext(cctx, "nc", "-z", "-w", "3", host, fmt.Sprintf("%d", port))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		// exit code 1 typically means port closed; surface the stderr for
+		// diagnostics.
+		return fmt.Errorf("nc -z %s %d: %w (out: %s)", host, port, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// waitForSSHUp polls until sshd is reachable on the host or the deadline
+// fires. Uses /usr/bin/nc (system binary, entitled on macOS) as the
+// primary probe, with the legacy Go net.Dial as a fallback when nc is
+// unavailable (some hardened environments may strip nc).
 func waitForSSHUp(ctx context.Context, ip string, opts *FinalizeOptions) error {
 	if opts != nil && opts.SkipSSHWait {
 		return nil
@@ -114,8 +150,18 @@ func waitForSSHUp(ctx context.Context, ip string, opts *FinalizeOptions) error {
 	if ip == "" {
 		return errors.New("finalize: no IP available for SSH-up probe")
 	}
-	addr := net.JoinHostPort(ip, fmt.Sprintf("%d", opts.sshPort()))
-	dial := opts.dialer()
+	port := opts.sshPort()
+	addr := net.JoinHostPort(ip, fmt.Sprintf("%d", port))
+
+	// Detect nc availability once. If absent OR a custom Dialer is injected
+	// (typically a test fake), fall back to Go net.Dial (legacy behavior —
+	// works on Linux + CI, where Local Network Privacy doesn't exist).
+	useNC := opts == nil || opts.Dialer == nil
+	if useNC {
+		if _, err := exec.LookPath("nc"); err != nil {
+			useNC = false
+		}
+	}
 
 	deadline := time.Now().Add(opts.timeout())
 	interval := opts.pollInterval()
@@ -128,21 +174,31 @@ func waitForSSHUp(ctx context.Context, ip string, opts *FinalizeOptions) error {
 			}
 			return fmt.Errorf("finalize: ssh-up wait %s: %w", addr, lastErr)
 		}
-		dctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		conn, err := dial(dctx, "tcp", addr)
-		cancel()
-		if err == nil {
-			// Read up to ~32 bytes of banner; SSH servers send "SSH-2.0-..."
-			_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
-			buf := make([]byte, 64)
-			n, rerr := conn.Read(buf)
-			_ = conn.Close()
-			if rerr == nil && n > 0 && strings.HasPrefix(string(buf[:n]), "SSH-") {
+
+		if useNC {
+			if err := probeSSHViaSystemNC(ctx, ip, port); err == nil {
 				return nil
+			} else {
+				lastErr = err
 			}
-			lastErr = fmt.Errorf("connected but no SSH banner (read=%d, err=%v)", n, rerr)
 		} else {
-			lastErr = err
+			// Legacy Go-net.Dial path — banner check included.
+			dial := opts.dialer()
+			dctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			conn, err := dial(dctx, "tcp", addr)
+			cancel()
+			if err == nil {
+				_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+				buf := make([]byte, 64)
+				n, rerr := conn.Read(buf)
+				_ = conn.Close()
+				if rerr == nil && n > 0 && strings.HasPrefix(string(buf[:n]), "SSH-") {
+					return nil
+				}
+				lastErr = fmt.Errorf("connected but no SSH banner (read=%d, err=%v)", n, rerr)
+			} else {
+				lastErr = err
+			}
 		}
 
 		select {

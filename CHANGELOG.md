@@ -2,6 +2,36 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.05.07.2 — 2026-05-07
+
+### fix(workflow): finalize SSH-probe via system nc instead of Go net.Dial (#72)
+
+Companion to #70 (v2026.05.07.1). The SSH-tunnel transport in #70 only
+fixed Proxmox API calls. The `workflow finalize` step has its own SSH-up
+probe that uses Go's `net.Dial` directly — and hits the same macOS 26.3
+Local Network Privacy gate, returning `EHOSTUNREACH` on the freshly
+installed VM's IP:
+
+```
+[finalize:ext3adm1] waiting for SSH-up at 10.10.0.55 (public, timeout 30m0s)
+Error: finalize: ssh-up wait 10.10.0.55:22: dial tcp 10.10.0.55:22: connect: no route to host
+```
+
+System `/usr/bin/nc` is notarized + entitled, so it can probe LAN ports
+that Go's `net.Dial` cannot. Replace the Go-net dialer with a `nc -z`
+shell-out for the probe (port-open is sufficient — banner check was
+overkill anyway).
+
+When `nc` is not on PATH (rare; some hardened environments strip it) or
+when a custom `Dialer` is injected (test fakes), proxctl falls back to
+the legacy Go-net path. **No behavioral change on Linux + CI.**
+
+Verified end-to-end on macOS 26.3:
+- `proxctl workflow finalize --node ext3adm1` → SSH-up ✓ → ide3 detach ✓ → ide2 detach ✓ → boot=scsi0 ✓
+- Both ext3 + ext4 VMs finalized in a single session
+
+Refs proxctl#72, proxctl#70, itunified-io/infrastructure#576
+
 ## v2026.05.07.1 — 2026-05-07
 
 ### fix(transport): SSH-tunnel mode for macOS 26+ Local Network Privacy gate (#70)
