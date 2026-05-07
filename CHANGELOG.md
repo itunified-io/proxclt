@@ -2,6 +2,43 @@
 
 All notable changes to proxctl are documented here. Format: CalVer (`YYYY.MM.DD.TS`).
 
+## v2026.05.07.1 — 2026-05-07
+
+### fix(transport): SSH-tunnel mode for macOS 26+ Local Network Privacy gate (#70)
+
+macOS 26.3 (Tahoe) silently denies LAN connect() from ad-hoc-signed Go
+binaries with `EHOSTUNREACH` ("no route to host"), even though curl/ssh/
+nc/python succeed against the same target. The kernel masks the privacy
+denial as a routing error, indistinguishable from real network failure.
+
+**Diagnosis** (proxctl#70 / itunified-io/infrastructure#576):
+- `route -n get <ip>` reports en0 routing — works at kernel level
+- Tailscale OFF — same failure
+- Python with non-blocking + kqueue (Go's exact dial pattern) — works
+- All Go binaries (proxctl, mcp-proxmox, fresh test) — fail
+- Apple-notarized binaries (curl, ssh, ping, nc) — work
+
+**Fix**: SSH-tunnel transport. `/usr/bin/ssh` is notarized + entitled
+to reach the LAN. proxctl spawns `ssh -L localPort:remoteHost:remotePort`
+on demand and dials `127.0.0.1:localPort` — localhost is exempt from the
+privacy gate. Tunnel cleanup at process exit.
+
+**Activation**: env vars (per-invocation, no config edit required):
+
+```bash
+export PROXCTL_TUNNEL_SSH=root@proximo01
+export PROXCTL_TUNNEL_SSH_KEY=~/.ssh/proxmox_ed25519
+proxctl kickstart upload --storage proxmox --node proximo /path/to/iso
+```
+
+When unset, proxctl behaves exactly as before (direct HTTPS). Linux + CI
+operators are unaffected.
+
+**Future work**: per-context `tunnel:` config block in
+`~/.proxctl/config.yaml`, auto-detection on darwin for RFC1918 endpoints.
+
+Refs proxctl#70, itunified-io/infrastructure#576
+
 ## v2026.05.04.6 — 2026-05-04
 
 ### feat(workflow): post-install finalize — detach ide2/ide3, reset boot order to scsi0 (#67)
