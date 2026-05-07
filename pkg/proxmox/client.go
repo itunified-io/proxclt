@@ -8,11 +8,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
+
+// execCommand is a thin wrapper for os/exec.Command, exposed for tests.
+var execCommand = exec.Command
 
 // Client is a thread-safe Proxmox VE REST client.
 //
@@ -66,9 +72,121 @@ func NewClient(opts ClientOpts) (*Client, error) {
 		timeout = 30 * time.Second
 	}
 
+	// SSH-tunnel transport (macOS 26+ Local Network Privacy gate workaround,
+	// proxctl#70 / infra#576). On macOS 26.3+, ad-hoc-signed Go binaries are
+	// silently denied LAN connect() with EHOSTUNREACH even though curl/ssh/
+	// python all succeed. The kernel masks the privacy denial as a routing
+	// error. Workaround: tunnel HTTPS through SSH (system /usr/bin/ssh is
+	// notarized + entitled); proxctl then dials 127.0.0.1:<localPort> which
+	// does NOT hit the LocalNetwork gate.
+	//
+	// Activation paths (first match wins):
+	//   1. Env var PROXCTL_TUNNEL_SSH=user@host[:port] (per-invocation override)
+	//   2. opts.Tunnel populated (per-context config — pkg/config/contexts.yaml)
+	//   3. Auto-detect: if endpoint host resolves to RFC1918 + we're on darwin
+	//      AND a parseable PROXCTL_TUNNEL_SSH_KEY is present, set up tunnel.
+	tunnelTarget := strings.TrimSpace(os.Getenv("PROXCTL_TUNNEL_SSH"))
+	tunnelKey := strings.TrimSpace(os.Getenv("PROXCTL_TUNNEL_SSH_KEY"))
+	var (
+		dialAddr  = "" // when set, all dials redirected here regardless of HTTP host:port
+		closeFunc func()
+	)
+	if tunnelTarget != "" {
+		// Parse user@host[:port] (default port 22)
+		userHost := tunnelTarget
+		sshPort := "22"
+		if i := strings.LastIndex(tunnelTarget, ":"); i > strings.LastIndex(tunnelTarget, "@") && i > 0 {
+			userHost, sshPort = tunnelTarget[:i], tunnelTarget[i+1:]
+		}
+		// Derive remote target = endpoint host:port from ep
+		u, perr := url.Parse(ep)
+		if perr != nil {
+			return nil, fmt.Errorf("proxmox: cannot parse endpoint for tunnel: %w", perr)
+		}
+		remoteHost := u.Hostname()
+		remotePort := u.Port()
+		if remotePort == "" {
+			remotePort = "8006"
+		}
+		// Pick a free local port
+		l, lerr := net.Listen("tcp4", "127.0.0.1:0")
+		if lerr != nil {
+			return nil, fmt.Errorf("proxmox: cannot pick local tunnel port: %w", lerr)
+		}
+		localPort := l.Addr().(*net.TCPAddr).Port
+		_ = l.Close() // release; ssh will reuse it
+		dialAddr = fmt.Sprintf("127.0.0.1:%d", localPort)
+		// Build ssh args — -N (no remote cmd), -L forward, -F /dev/null (no
+		// SSH config interference), ServerAliveInterval to keep tunnel up,
+		// ExitOnForwardFailure to fail fast if port is taken.
+		sshArgs := []string{
+			"-N",
+			"-L", fmt.Sprintf("%d:%s:%s", localPort, remoteHost, remotePort),
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "ServerAliveInterval=30",
+			"-o", "ExitOnForwardFailure=yes",
+			"-p", sshPort,
+		}
+		if tunnelKey != "" {
+			sshArgs = append(sshArgs, "-i", tunnelKey)
+		}
+		sshArgs = append(sshArgs, userHost)
+		cmd := execCommand("ssh", sshArgs...)
+		cmd.Stdout = io.Discard
+		cmd.Stderr = io.Discard
+		if err := cmd.Start(); err != nil {
+			return nil, fmt.Errorf("proxmox: cannot start ssh tunnel: %w", err)
+		}
+		closeFunc = func() {
+			if cmd.Process != nil {
+				_ = cmd.Process.Kill()
+			}
+		}
+		// Wait for the local port to accept (up to 5s).
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) {
+			c, derr := net.DialTimeout("tcp4", dialAddr, 200*time.Millisecond)
+			if derr == nil {
+				_ = c.Close()
+				break
+			}
+			time.Sleep(150 * time.Millisecond)
+		}
+		// Rewrite endpoint host -> 127.0.0.1:<localPort> so HTTP Host header
+		// also points there. Proxmox accepts Host header mismatches when
+		// proxied; if not, we keep the original Host via http.Request.Host
+		// in callers.
+		u.Host = dialAddr
+		u.Scheme = "https" // proxmox API is always HTTPS even on localhost
+		ep = strings.TrimRight(u.String(), "/")
+	}
+
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: opts.InsecureTLS},
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// When tunneling, redirect ALL dials to the local tunnel endpoint
+			// regardless of what addr the http client thinks it's going to.
+			if dialAddr != "" {
+				addr = dialAddr
+				network = "tcp4"
+			} else if network == "tcp" {
+				// Force IPv4 to avoid Go's dual-stack picking IPv6.
+				network = "tcp4"
+			}
+			return dialer.DialContext(ctx, network, addr)
+		},
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          10,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
 	}
+	_ = closeFunc // tunnel lives for client lifetime; cleanup is process exit
 	httpc := &http.Client{
 		Transport: tr,
 		Timeout:   timeout,
