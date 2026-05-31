@@ -29,6 +29,31 @@ archives:
       - README.md
       - CHANGELOG.md
 
+# ── Apple Developer ID signing + notarization (macOS) ──────────────────────
+# Fixes the macOS Sequoia 26.3+ Local Network Privacy gate which silently
+# denies LAN connect() from unsigned Go binaries.
+#
+# Enabled when APPLE_NOTARY_KEY_P8 env var is set (i.e. in release CI on a
+# macos-14 runner with all secrets imported). On `goreleaser release --snapshot`
+# or any environment without secrets, this block is skipped — no-op for dev.
+#
+# Cert + notary key managed in infrastructure repo:
+# - infrastructure/docs/operations/apple-devid-signing.md
+# - infrastructure/memory/reference_apple_devid_cert.md (operator-only)
+notarize:
+  macos:
+    - enabled: '{{ isEnvSet "APPLE_NOTARY_KEY_P8" }}'
+      ids: [proxctl]
+      sign:
+        certificate: "{{ .Env.APPLE_CERT_P12_B64 }}"
+        password: "{{ .Env.APPLE_CERT_PASSWORD }}"
+      notarize:
+        key: "{{ .Env.APPLE_NOTARY_KEY_P8 }}"
+        key_id: "{{ .Env.APPLE_NOTARY_KEY_ID }}"
+        issuer_id: "{{ .Env.APPLE_NOTARY_ISSUER_ID }}"
+        wait: true
+        timeout: 30m
+
 checksum:
   name_template: "checksums.txt"
 
