@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTD/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Required for macOS Sequoia 26.3+ Local Network Privacy gate.
+         Without these, the OS silently denies connect() to LAN-side
+         Proxmox / Vault / NAS / OPNsense services with EHOSTUNREACH.
+         See: infrastructure/docs/operations/apple-devid-signing.md -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>com.apple.security.network.server</key>
+    <true/>
+</dict>
+</plist>
